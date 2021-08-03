@@ -1,6 +1,7 @@
 import argparse
 import networkx as nx
 from gensim.models import Word2Vec
+from deepwalk import *
 
 def parse_args():
 	'''
@@ -11,8 +12,14 @@ def parse_args():
 	parser.add_argument('--input', nargs='?', default='examples/karate.edgelist',
 						help='Input graph path')
 
-	parser.add_argument('--output', nargs='?', default='output/karate.emb',
+	parser.add_argument('--output', nargs='?', default='output/karate-dw.emb',
 						help='Embeddings path')
+
+	parser.add_argument('--method', nargs='?', default='node2vec',
+						help='Network embedding method')
+
+	parser.add_argument('--format', nargs='?', default='edgelist',
+						help='File format of input file')
 
 	parser.add_argument('--dimensions', type=int, default=128,
 						help='Number of dimensions. Default is 128.')
@@ -33,10 +40,10 @@ def parse_args():
 						help='Number of parallel workers. Default is 8.')
 
 	parser.add_argument('--p', type=float, default=1,
-						help='Return hyperparameter. Default is 1.')
+						help='Return hyperparameter for node2vec. Default is 1.')
 
 	parser.add_argument('--q', type=float, default=1,
-						help='Inout hyperparameter. Default is 1.')
+						help='Inout hyperparameter for node2vec. Default is 1.')
 
 	parser.add_argument('--weighted', dest='weighted', action='store_true',
 						help='Boolean specifying (un)weighted. Default is unweighted.')
@@ -55,6 +62,15 @@ def read_graph(args):
 	'''
 	Reads the input network in networkx.
 	'''
+	if args.method == "node2vec":
+		read_graph_n2v(args)
+	elif args.method == "deepwalk":
+		read_graph_dw(args)
+	else:
+		raise Exception("Will add other methods here")
+
+
+def read_graph_n2v(args):
 	if args.weighted:
 		G = nx.read_edgelist(args.input, nodetype=int, data=(('weight', float),), create_using=nx.DiGraph())
 	else:
@@ -66,6 +82,9 @@ def read_graph(args):
 		G = G.to_undirected()
 
 	return G
+
+#TODO: complete this
+def read_graph_dw(args)
 
 def learn_embeddings(args, walks):
 	'''

@@ -117,7 +117,6 @@ class Graph(defaultdict):
 
     def random_walk(self, path_length, alpha=0, rand=random.Random(), start=None):
         """ Returns a truncated random walk.
-
             path_length: Length of the random walk.
             alpha: probability of restarts.
             start: the start node of the random walk.
@@ -361,7 +360,6 @@ __vertex2str = None
 
 def count_words(file):
   """ Counts the word frequences in a list of sentences.
-
   Note:
     This is a helper function for parallel execution of `Vocabulary.from_text`
     method.
