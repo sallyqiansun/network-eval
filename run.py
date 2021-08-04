@@ -5,6 +5,9 @@ from scipy.sparse import issparse
 from deepwalk import *
 from node2vec import *
 from networkx import Graph
+from scipy.io import loadmat
+from scipy.sparse import issparse
+
 def parse_args():
 	'''
 	Parses the node2vec arguments.
@@ -79,6 +82,8 @@ def read_graph(args):
 		G = read_graph_edgelist(args)
 	elif args.format == "adjlist":
 		G = read_graph_adjlist(args)
+	elif args.format == "mat":
+		G = read_graph_mat(args)
 	else:
 		raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % args.format)
 
@@ -106,6 +111,23 @@ def read_graph_adjlist(args):
 
 	return G
 
+def read_graph_mat(args, variable_name='network'):
+  mat_varables = loadmat(args.input)
+  x = mat_varables[variable_name]
+
+  G = Graph()
+
+  if issparse(x):
+	  cx = x.tocoo()
+	  for i, j, v in zip(cx.row, cx.col, cx.data):
+		  G.add_edge(i, j, weight=1)
+  else:
+	  raise Exception("Dense matrices not yet supported.")
+
+  if not args.directed:
+	  G.to_undirected()
+
+  return G
 
 def simulate_and_embed(args, G):
 	'''
@@ -135,7 +157,7 @@ def simulate_and_embed(args, G):
 			print("Walking...")
 
 			walks_filebase = args.output + ".walks"
-			walk_files = write_walks_to_disk(G, walks_filebase, num_paths=args.number_walks,
+			walk_files = write_walks_to_disk(G, walks_filebase, num_paths=args.num_walks,
 															  path_length=args.walk_length, alpha=0,
 															  rand=rand,
 															  num_workers=args.workers)
