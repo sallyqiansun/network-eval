@@ -17,7 +17,7 @@ from sklearn.metrics import f1_score
 from scipy.io import loadmat
 from sklearn.utils import shuffle as skshuffle
 from sklearn.preprocessing import MultiLabelBinarizer
-
+from networkx import Graph
 
 class TopKRanker(OneVsRestClassifier):
     def predict(self, X, top_k_list):
@@ -34,9 +34,9 @@ class TopKRanker(OneVsRestClassifier):
 def sparse2graph(x):
     G = defaultdict(lambda: set())
     cx = x.tocoo()
-    for i, j, v in zip(cx.row, cx.col, cx.data):
+    for i,j,v in zip(cx.row, cx.col, cx.data):
         G[i].add(j)
-    return {str(k): [str(x) for x in v] for k, v in iteritems(G)}
+    return {str(k): [str(x) for x in v] for k,v in iteritems(G)}
 
 
 def main():
@@ -56,12 +56,26 @@ def main():
                              'By default, only training percents of 10, 50 and 90 are used.')
 
     args = parser.parse_args()
+
     # 0. Files
     embeddings_file = args.emb
     matfile = args.network
 
     # 1. Load Embeddings
-    model = KeyedVectors.load_word2vec_format(embeddings_file, binary=False)
+
+    # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
+    with open(embeddings_file) as f:
+        f.readline().split()
+        embeddings = {}
+        for line in f:
+            l = line.strip().split()
+            node = l[0]
+            embedding = l[1:]
+            embedding = [float(i) for i in embedding]
+            embedding = embedding / numpy.linalg.norm(embedding)
+            numpy.nan_to_num(embedding, nan=0)
+            embeddings[node] = list(embedding)
+    f.close()
 
     # 2. Load labels
     mat = loadmat(matfile)
@@ -72,7 +86,7 @@ def main():
     mlb = MultiLabelBinarizer(range(labels_count))
 
     # Map nodes to their features (note:  assumes nodes are labeled as integers 1:N)
-    features_matrix = numpy.asarray([model[str(node)] for node in range(len(graph))])
+    features_matrix = numpy.asarray([embeddings[str(node)] for node in range(len(graph))])
 
     # 2. Shuffle, to create train/test groups
     shuffles = []
