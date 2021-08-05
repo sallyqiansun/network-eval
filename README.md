@@ -1,5 +1,7 @@
 Network-eval
 
+# To run embedding methods:
+
 - deepwalk (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
 
     python deepwalk.py --input examples/karate.edgelist --output output/karate-dw.emd --method deepwalk
@@ -12,3 +14,15 @@ Network-eval
 
     python node2vec.py --format mat --input examples/blogcatalog.mat --output output/blogcatalog-n2v.emd --method node2vec --workers 20
 
+-
+
+
+# To perform evaluations:
+
+- node classification
+    
+    python evaluate-NodeClassification.py --emb output/blogcatalog-dw.emd --network examples/blogcatalog.mat --num-shuffle 10 --all
+
+- link prediction
+
+- link recommendation

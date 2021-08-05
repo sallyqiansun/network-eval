@@ -9,15 +9,13 @@ import sys
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from collections import defaultdict
-from gensim.models import Word2Vec, KeyedVectors
 from six import iteritems
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score, zero_one_loss, log_loss
 from scipy.io import loadmat
 from sklearn.utils import shuffle as skshuffle
 from sklearn.preprocessing import MultiLabelBinarizer
-from networkx import Graph
 
 class TopKRanker(OneVsRestClassifier):
     def predict(self, X, top_k_list):
@@ -139,7 +137,14 @@ def main():
             for average in averages:
                 results[average] = f1_score(mlb.fit_transform(y_test), mlb.fit_transform(preds), average=average)
 
+            results['accuracy'] = accuracy_score(mlb.fit_transform(y_test), mlb.fit_transform(preds))
+            results['zero_one_loss'] = zero_one_loss(mlb.fit_transform(y_test), mlb.fit_transform(preds))
+            results['log_loss'] = log_loss(mlb.fit_transform(y_test), mlb.fit_transform(preds))
+
             all_results[train_percent].append(results)
+
+    eva_fname = 'evaluation/'+ matfile[matfile.find('/'):matfile.find('.mat')] + '-' + embeddings_file[embeddings_file.find('-'):embeddings_file.find('.emd')] + '.txt'
+    sys.stdout = open(eva_fname, "w")
 
     print('Results, using embeddings of dimensionality', X.shape[1])
     print('-------------------')
@@ -155,6 +160,7 @@ def main():
             avg_score[metric] /= len(all_results[train_percent])
         print('Average score:', dict(avg_score))
         print('-------------------')
+    sys.stdout.close()
 
 
 if __name__ == "__main__":
