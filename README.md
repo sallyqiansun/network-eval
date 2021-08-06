@@ -1,6 +1,10 @@
-Network-eval
 
-# To run embedding methods:
+# **Tasks** Performed on **Datasets**:
+
+  ![table.JPG](table.JPG?raw=true "https://ieeexplore.ieee.org/abstract/document/8392745")
+
+
+# Embedding Methods:
 
 - deepwalk (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
 
@@ -17,7 +21,7 @@ Network-eval
 -
 
 
-# To perform evaluations:
+# Evaluation Metrics:
 
 - node classification
     
