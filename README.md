@@ -29,4 +29,6 @@
 
 - link prediction
 
+    python evaluate-LinkPrediction.py --operator hadamard --method n2v --p 1 --q 1 --workers 1 --all --network examples/blogcatalog.mat
+
 - link recommendation

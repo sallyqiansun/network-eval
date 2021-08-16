@@ -38,7 +38,7 @@ def sparse2graph(x):
 
 
 def main():
-    parser = ArgumentParser("scoring",
+    parser = ArgumentParser("node classification",
                             formatter_class=ArgumentDefaultsHelpFormatter,
                             conflict_handler='resolve')
     parser.add_argument("--emb", required=True, help='Embeddings file')
