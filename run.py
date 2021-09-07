@@ -4,6 +4,7 @@ from scipy.io import loadmat
 from scipy.sparse import issparse
 from deepwalk import *
 from node2vec import *
+from grarep import *
 from networkx import Graph
 from scipy.io import loadmat
 from scipy.sparse import issparse
@@ -150,7 +151,7 @@ def simulate_and_embed(args, G):
 										  path_length=args.walk_length, alpha=0, rand=rand)
 			print("Training...")
 			model = Word2Vec(walks, vector_size=args.representation_size, window=args.window_size, min_count=0, sg=1, hs=1,
-							 workers=args.workers)
+							 workers=args.workers, epochs=args.iter)
 		else:
 			print("Data size {} is larger than limit (max-memory-data-size: {}).  Dumping walks to disk.".format(data_size,
 																												 args.max_memory_data_size))
@@ -183,8 +184,12 @@ def simulate_and_embed(args, G):
 		walks = [list(map(str, walk)) for walk in walks]
 
 		print("Training...")
-		model = Word2Vec(walks, window=args.window_size, min_count=0, sg=1, workers=args.workers)
+		model = Word2Vec(walks, window=args.window_size, min_count=0, sg=1, workers=args.workers, epochs=args.iter)
 		model.iter = args.iter
+
+	elif args.method == "grarep":
+		get_representations(G, K, beta)
+		get_embeddings(X_rep, N, dimension, K)
 
 	model.wv.save_word2vec_format(args.output)
 	print("Embedding saved to {}.".format(args.output))

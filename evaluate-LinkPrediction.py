@@ -26,7 +26,7 @@ def node2vec_embedding(args, graph):
         min_count=0,
         sg=1,
         workers=args.workers,
-        iter=args.iter,
+        epochs=args.iter,
     )
 
     def get_embedding(u):
@@ -178,16 +178,52 @@ def main():
     all_results = {}
     for train_percent in training_percents:
         (examples_train, examples_model_selection, labels_train, labels_model_selection,) = train_test_split(examples, labels, train_size=train_percent, test_size=1-train_percent)
-        clf = train_link_prediction_model(
-            examples_train, labels_train, embedding_train, args.operator
-        )
-        score = evaluate_link_prediction_model(
-            clf,
-            examples_model_selection,
-            labels_model_selection,
-            embedding_train,
-            args.operator,
-        )
+        if args.operator == "l1":
+            clf = train_link_prediction_model(
+                examples_train, labels_train, embedding_train, operator_l1
+            )
+            score = evaluate_link_prediction_model(
+                clf,
+                examples_model_selection,
+                labels_model_selection,
+                embedding_train,
+                operator_l1,
+            )
+        elif args.operator == "l2":
+            clf = train_link_prediction_model(
+                examples_train, labels_train, embedding_train, operator_l2
+            )
+            score = evaluate_link_prediction_model(
+                clf,
+                examples_model_selection,
+                labels_model_selection,
+                embedding_train,
+                operator_l2,
+            )
+        elif args.operator =="hadamard":
+            clf = train_link_prediction_model(
+                examples_train, labels_train, embedding_train, operator_hadamard
+            )
+            score = evaluate_link_prediction_model(
+                clf,
+                examples_model_selection,
+                labels_model_selection,
+                embedding_train,
+                operator_hadamard,
+            )
+        elif args.operator == "average":
+            clf = train_link_prediction_model(
+                examples_train, labels_train, embedding_train, operator_avg
+            )
+            score = evaluate_link_prediction_model(
+                clf,
+                examples_model_selection,
+                labels_model_selection,
+                embedding_train,
+                operator_avg,
+            )
+        else:
+            raise Exception("Unknown operator, select from l1, l2, hadamard, and average" % args.format)
 
         all_results[train_percent] = score
 
@@ -195,11 +231,11 @@ def main():
     sys.stdout = open(eva_fname, "w")
 
     print('Results, using embeddings of dimensionality', args.representation_size)
+    print('Operator', args.operator)
     print('-------------------')
     for train_percent in sorted(all_results.keys()):
         print('Train percent:', train_percent)
-        for index, score in enumerate(all_results[train_percent]):
-            print(score)
+        print(all_results[train_percent])
         print('-------------------')
     sys.stdout.close()
 
