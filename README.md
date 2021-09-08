@@ -6,7 +6,7 @@
   ![table.JPG](table.JPG?raw=true "https://ieeexplore.ieee.org/abstract/document/8392745")
 
 
-####1. random-walk based methods
+#### 1. random-walk based methods
 - DeepWalk (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
 
     python deepwalk.py --input examples/karate.edgelist --output output/karate-dw.emd --method deepwalk
@@ -20,18 +20,34 @@
     python node2vec.py --format mat --input examples/blogcatalog.mat --output output/blogcatalog-n2v.emd --method node2vec --workers 20
 
 
-####2. matrix factorization methods
+#### 2. matrix factorization methods
 
 - GraRep
 
 - LINE
 
 - HOPE
-####3. deep neural networks methods
+
+
+#### 3. deep neural networks methods
 
 - SDNE
 
-# Stochastic Block Models
+# Generative Models:
+
+- SBM
+
+- ERGM
+
+
+# Community Detection Algorithms:
+
+- 
+# Datasets
+
+- blogcatalog
+
+- karate
 
 # Evaluation Metrics:
 
