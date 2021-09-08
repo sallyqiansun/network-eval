@@ -22,7 +22,7 @@
 
 #### 2. matrix factorization methods
 
-- GraRep
+- GraRep (source: https://github.com/benedekrozemberczki/GraRep access-date 9/8/2021)
 
 - LINE
 

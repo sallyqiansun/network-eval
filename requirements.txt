@@ -5,3 +5,4 @@ numpy==1.20.1
 scipy==1.6.2
 scikit_learn==0.24.2
 stellargraph==1.2.1
+tqdm==4.62.2

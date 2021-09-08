@@ -62,6 +62,8 @@ def parse_args():
 	parser.add_argument('--q', type=float, default=1,
 						help='Inout hyperparameter for node2vec. Default is 1.')
 
+
+
 	parser.add_argument('--weighted', dest='weighted', action='store_true',
 						help='Boolean specifying (un)weighted. Default is unweighted.')
 	parser.add_argument('--unweighted', dest='unweighted', action='store_false')
@@ -188,8 +190,7 @@ def simulate_and_embed(args, G):
 		model.iter = args.iter
 
 	elif args.method == "grarep":
-		get_representations(G, K, beta)
-		get_embeddings(X_rep, N, dimension, K)
+		#TODO: apply grarep here
 
 	model.wv.save_word2vec_format(args.output)
 	print("Embedding saved to {}.".format(args.output))
