@@ -8,21 +8,19 @@
 
 #### 1. random-walk based methods
 - DeepWalk (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
-
-    python deepwalk.py --input examples/karate.edgelist --output output/karate-dw.emd --method deepwalk
   
-    python deepwalk.py --format mat --input examples/blogcatalog.mat --output output/blogcatalog-dw.emd --method deepwalk --num-walks 80 --workers 20 --representation-size 128 --walk-length 40 --window-size 10
+    python node2vec.py --method deepwalk --format mat --input examples/blogcatalog.mat --output embedding/blogcatalog-dw.emd --num-walks 80 --workers 20 --representation-size 128 --walk-length 40 --window-size 10
 
 - Node2Vec (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
 
-    python node2vec.py --input examples/karate.edgelist --output output/karate-n2v.emd --method node2vec
-
-    python node2vec.py --format mat --input examples/blogcatalog.mat --output output/blogcatalog-n2v.emd --method node2vec --workers 20
+    python node2vec.py --method node2vec --format edgelist --input examples/karate.edgelist --output embedding/karate-n2v.emd --num-walks 80 --workers 20 --representation-size 128 --walk-length 40 --window-size 10 --p 0.9 --q 0.9
 
 
 #### 2. matrix factorization methods
 
 - GraRep (source: https://github.com/benedekrozemberczki/GraRep access-date 9/8/2021)
+
+    python grarep.py --
 
 - LINE
 
@@ -53,7 +51,7 @@
 
 - node classification
     
-    python evaluate-NodeClassification.py --emb output/blogcatalog-dw.emd --network examples/blogcatalog.mat --num-shuffle 10 --all
+    python evaluate-NodeClassification.py --emb embedding/blogcatalog-n2v.emd --network examples/blogcatalog.mat --format mat --num-shuffle 10 --all
 
 - link prediction
 
