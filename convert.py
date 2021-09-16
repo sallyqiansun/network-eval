@@ -1,6 +1,5 @@
 import networkx as nx
 import argparse
-from run import read_graph
 import numpy as np
 
 def parse_args():
@@ -18,6 +17,7 @@ def parse_args():
     parser.set_defaults(directed=False)
 
     return parser.parse_args()
+
 
 def main(args):
     in_fname = args.input

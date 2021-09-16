@@ -20,7 +20,7 @@
 
 - GraRep (source: https://github.com/benedekrozemberczki/GraRep access-date 9/8/2021)
 
-    python grarep.py --
+    python grarep.py --format edgelist --input examples/cora.csv --output embedding/cora-grarep.emd --dimensions 16 --seed 1 --order 5 --iter 1
 
 - LINE
 
