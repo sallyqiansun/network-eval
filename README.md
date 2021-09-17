@@ -7,7 +7,7 @@
 
 
 #### 1. random-walk based methods
-- DeepWalk (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
+- DeepWalk (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
   
     python node2vec.py --method deepwalk --format mat --input examples/blogcatalog.mat --output embedding/blogcatalog-dw.emd --num-walks 80 --workers 20 --representation-size 128 --walk-length 40 --window-size 10
 
@@ -41,20 +41,23 @@
 # Community Detection Algorithms:
 
 - 
+
 # Datasets
 
 - blogcatalog
 
 - karate
 
+- cora
+
 # Evaluation Metrics:
 
-- node classification
-    
-    python evaluate-NodeClassification.py --emb embedding/blogcatalog-n2v.emd --network examples/blogcatalog.mat --format mat --num-shuffle 10 --all
+- node classification (source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
+    cd evaluate
+    python NodeClassification.py --emb embedding/blogcatalog-n2v.emd --network examples/blogcatalog.mat --format mat --num-shuffle 10 --all
 
-- link prediction
-
-    python evaluate-LinkPrediction.py --operator hadamard --method n2v --p 1 --q 1 --workers 1 --all --network examples/blogcatalog.mat
+- link prediction  (source: https://github.com/lucashu1/link-prediction DOI: 10.5281/zenodo.1408472 access-date: 9/16/2021)
+    cd evaluate
+    python LinkPrediction.py --emb --network --format --num-shuffle --all
 
 - link recommendation

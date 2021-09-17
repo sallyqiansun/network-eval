@@ -4,7 +4,7 @@ import numpy as np
 
 def parse_args():
 
-    parser = argparse.ArgumentParser(description="Convert .mat file to adjlist and edgelist graphs.")
+    parser = argparse.ArgumentParser(description="Supports the following conversion of file formats： .mat->.adjlist & .edgelist; .csv->.edgelist")
 
     parser.add_argument('--input', nargs='?', default='examples/blogcatalog.mat', help='Input .mat path')
 
