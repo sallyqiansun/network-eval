@@ -28,7 +28,9 @@
 
     python grarep.py --format edgelist --input examples/cora.csv --output embedding/cora-grarep.emd --dimensions 16 --seed 1 --order 5 --iter 1
 
-- LINE
+- LINE (source: https://github.com/snowkylin/line access-date 9/29/2021)
+
+    python line.py --graph_file converted/karate-converted.gpickle --num_batches 3000
 
 ### 2. Inductive Methods
 - GraphSAGE

@@ -1,235 +1,197 @@
+import networkx as nx
 import numpy as np
-from scipy.sparse import csr_matrix
-import random
-import keras.backend as K
-from sklearn import svm
-from sklearn.metrics import accuracy_score
-import math
-import csv
-from sklearn.preprocessing import LabelEncoder
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+import numpy as np
+import argparse
+import pickle
+import time
 
-from tensorflow.keras.layers import Embedding, Reshape, Merge, Activation, Input, merge
-from tensorflow.keras.models import Sequential, Model
+class DBLPDataLoader:
+    def __init__(self, graph_file):
+        self.g = nx.read_gpickle(graph_file)
+        self.num_of_nodes = self.g.number_of_nodes()
+        self.num_of_edges = self.g.number_of_edges()
+        self.edges_raw = self.g.edges(data=True)
+        self.nodes_raw = self.g.nodes(data=True)
+
+        self.edge_distribution = np.array([attr['weight'] for _, _, attr in self.edges_raw], dtype=np.float32)
+        self.edge_distribution /= np.sum(self.edge_distribution)
+        self.edge_sampling = AliasSampling(prob=self.edge_distribution)
+        self.node_negative_distribution = np.power(
+            np.array([self.g.degree(node, weight='weight') for node, _ in self.nodes_raw], dtype=np.float32), 0.75)
+        self.node_negative_distribution /= np.sum(self.node_negative_distribution)
+        self.node_sampling = AliasSampling(prob=self.node_negative_distribution)
+
+        self.node_index = {}
+        self.node_index_reversed = {}
+        for index, (node, _) in enumerate(self.nodes_raw):
+            self.node_index[node] = index
+            self.node_index_reversed[index] = node
+        self.edges = [(self.node_index[u], self.node_index[v]) for u, v, _ in self.edges_raw]
+
+    def fetch_batch(self, batch_size=16, K=10, edge_sampling='atlas', node_sampling='atlas'):
+        if edge_sampling == 'numpy':
+            edge_batch_index = np.random.choice(self.num_of_edges, size=batch_size, p=self.edge_distribution)
+        elif edge_sampling == 'atlas':
+            edge_batch_index = self.edge_sampling.sampling(batch_size)
+        elif edge_sampling == 'uniform':
+            edge_batch_index = np.random.randint(0, self.num_of_edges, size=batch_size)
+        u_i = []
+        u_j = []
+        label = []
+        for edge_index in edge_batch_index:
+            edge = self.edges[edge_index]
+            if self.g.__class__ == nx.Graph:
+                if np.random.rand() > 0.5:      # important: second-order proximity is for directed edge
+                    edge = (edge[1], edge[0])
+            u_i.append(edge[0])
+            u_j.append(edge[1])
+            label.append(1)
+            for i in range(K):
+                while True:
+                    if node_sampling == 'numpy':
+                        negative_node = np.random.choice(self.num_of_nodes, p=self.node_negative_distribution)
+                    elif node_sampling == 'atlas':
+                        negative_node = self.node_sampling.sampling()
+                    elif node_sampling == 'uniform':
+                        negative_node = np.random.randint(0, self.num_of_nodes)
+                    if not self.g.has_edge(self.node_index_reversed[negative_node], self.node_index_reversed[edge[0]]):
+                        break
+                u_i.append(edge[0])
+                u_j.append(negative_node)
+                label.append(-1)
+        return u_i, u_j, label
+
+    def embedding_mapping(self, embedding):
+        return {node: embedding[self.node_index[node]] for node, _ in self.nodes_raw}
 
 
+class AliasSampling:
 
-# code adapted from the python implementation of LINE, from https://github.com/VahidooX/LINE
+    # Reference: https://en.wikipedia.org/wiki/Alias_method
 
-def create_model(numNodes, factors):
+    def __init__(self, prob):
+        self.n = len(prob)
+        self.U = np.array(prob) * self.n
+        self.K = [i for i in range(len(prob))]
+        overfull, underfull = [], []
+        for i, U_i in enumerate(self.U):
+            if U_i > 1:
+                overfull.append(i)
+            elif U_i < 1:
+                underfull.append(i)
+        while len(overfull) and len(underfull):
+            i, j = overfull.pop(), underfull.pop()
+            self.K[j] = i
+            self.U[i] = self.U[i] - (1 - self.U[j])
+            if self.U[i] > 1:
+                overfull.append(i)
+            elif self.U[i] < 1:
+                underfull.append(i)
 
-    left_input = Input(shape=(1,))
-    right_input = Input(shape=(1,))
+    def sampling(self, n=1):
+        x = np.random.rand(n)
+        i = np.floor(self.n * x)
+        y = self.n * x - i
+        i = i.astype(np.int32)
+        res = [i[k] if y[k] < self.U[i[k]] else self.K[i[k]] for k in range(n)]
+        if n == 1:
+            return res[0]
+        else:
+            return res
 
-    left_model = Sequential()
-    left_model.add(Embedding(input_dim=numNodes + 1, output_dim=factors, input_length=1, mask_zero=False))
-    left_model.add(Reshape((factors,)))
 
-    right_model = Sequential()
-    right_model.add(Embedding(input_dim=numNodes + 1, output_dim=factors, input_length=1, mask_zero=False))
-    right_model.add(Reshape((factors,)))
+class LINEModel:
+    def __init__(self, args):
+        self.u_i = tf.placeholder(name='u_i', dtype=tf.int32, shape=[args.batch_size * (args.K + 1)])
+        self.u_j = tf.placeholder(name='u_j', dtype=tf.int32, shape=[args.batch_size * (args.K + 1)])
+        self.label = tf.placeholder(name='label', dtype=tf.float32, shape=[args.batch_size * (args.K + 1)])
+        self.embedding = tf.get_variable('target_embedding', [args.num_of_nodes, args.embedding_dim],
+                                         initializer=tf.random_uniform_initializer(minval=-1., maxval=1.))
+        self.u_i_embedding = tf.matmul(tf.one_hot(self.u_i, depth=args.num_of_nodes), self.embedding)
+        if args.proximity == 'first-order':
+            self.u_j_embedding = tf.matmul(tf.one_hot(self.u_j, depth=args.num_of_nodes), self.embedding)
+        elif args.proximity == 'second-order':
+            self.context_embedding = tf.get_variable('context_embedding', [args.num_of_nodes, args.embedding_dim],
+                                                     initializer=tf.random_uniform_initializer(minval=-1., maxval=1.))
+            self.u_j_embedding = tf.matmul(tf.one_hot(self.u_j, depth=args.num_of_nodes), self.context_embedding)
 
-    left_embed = left_model(left_input)
-    right_embed = left_model(right_input)
+        self.inner_product = tf.reduce_sum(self.u_i_embedding * self.u_j_embedding, axis=1)
+        self.loss = -tf.reduce_mean(tf.log_sigmoid(self.label * self.inner_product))
+        self.learning_rate = tf.placeholder(name='learning_rate', dtype=tf.float32)
+        # self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+        self.optimizer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate)
+        self.train_op = self.optimizer.minimize(self.loss)
 
-    left_right_dot = merge([left_embed, right_embed], mode="dot", dot_axes=1, name="left_right_dot")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--embedding_dim', default=128)
+    parser.add_argument('--batch_size', default=128)
+    parser.add_argument('--K', default=5)
+    parser.add_argument('--proximity', default='second-order', help='first-order or second-order')
+    parser.add_argument('--learning_rate', default=0.025)
+    parser.add_argument('--mode', default='train')
+    parser.add_argument('--num_batches', type=int, default=300000)
+    parser.add_argument('--total_graph', default=True)
+    parser.add_argument('--graph_file', default='data/co-authorship_graph.pkl')
+    args = parser.parse_args()
+    if args.mode == 'train':
+        train(args)
+    elif args.mode == 'test':
+        test(args)
 
-    model = Model(input=[left_input, right_input], output=[left_right_dot])
-    embed_generator = Model(input=[left_input, right_input], output=[left_embed, right_embed])
 
-    return model, embed_generator
-
-def load_data(label_file, edge_file):
-    csvfile = open(label_file, 'r')
-    label_data = csv.reader(csvfile, delimiter=' ')
-    labels_dict = dict()
-    for row in label_data:
-        labels_dict[int(row[0])] = int(row[1])
-
-    csvfile = open(edge_file, 'r')
-    adj_data = csv.reader(csvfile, delimiter=' ')
-    adj_list = None
-    for row in adj_data:
-        for j in range(1, len(row)):
-            if len(row[j]) == 0:
-                continue
-            a = int(row[0])
-            b = int(row[j])
-
-            if adj_list is None:
-                adj_list = np.zeros((1, 2), dtype=np.int32)
-                adj_list[0, :] = [a, b]
+def train(args):
+    data_loader = DBLPDataLoader(graph_file=args.graph_file)
+    suffix = args.proximity
+    args.num_of_nodes = data_loader.num_of_nodes
+    model = LINEModel(args)
+    with tf.Session() as sess:
+        print(args)
+        print('batches\tloss\tsampling time\ttraining_time\tdatetime')
+        tf.global_variables_initializer().run()
+        initial_embedding = sess.run(model.embedding)
+        learning_rate = args.learning_rate
+        sampling_time, training_time = 0, 0
+        for b in range(args.num_batches):
+            t1 = time.time()
+            u_i, u_j, label = data_loader.fetch_batch(batch_size=args.batch_size, K=args.K)
+            feed_dict = {model.u_i: u_i, model.u_j: u_j, model.label: label, model.learning_rate: learning_rate}
+            t2 = time.time()
+            sampling_time += t2 - t1
+            if b % 100 != 0:
+                sess.run(model.train_op, feed_dict=feed_dict)
+                training_time += time.time() - t2
+                if learning_rate > args.learning_rate * 0.0001:
+                    learning_rate = args.learning_rate * (1 - b / args.num_batches)
+                else:
+                    learning_rate = args.learning_rate * 0.0001
             else:
-                adj_list = np.concatenate((adj_list, [[a, b]]), axis=0)
-
-    adj_list = np.asarray(adj_list, dtype=np.int32)
-
-    labeler = LabelEncoder()
-    labeler.fit(list(set(adj_list.ravel())))
-
-    adj_list = (labeler.transform(adj_list.ravel())).reshape(-1, 2)
-
-    labels_dict = {labeler.transform([k])[0]: v for k, v in labels_dict.items() if k in labeler.classes_}
-
-    return adj_list, labels_dict
+                loss = sess.run(model.loss, feed_dict=feed_dict)
+                print('%d\t%f\t%0.2f\t%0.2f\t%s' % (b, loss, sampling_time, training_time,
+                                                    time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                sampling_time, training_time = 0, 0
+            if b % 1000 == 0 or b == (args.num_batches - 1):
+                embedding = sess.run(model.embedding)
+                normalized_embedding = embedding / np.linalg.norm(embedding, axis=1, keepdims=True)
+                pickle.dump(data_loader.embedding_mapping(normalized_embedding),
+                            open('embedding/line-%s.pkl' % suffix, 'wb'))
 
 
-def LINE_loss(y_true, y_pred):
-    coeff = y_true*2 - 1
-    return -K.mean(K.log(K.sigmoid(coeff*y_pred)))
+def read_graph_write_pkl(input_file, output_file):
+    G = nx.read_edgelist(input_file, nodetype=int, data=(('weight', float),))
+    for edge in G.edges():
+        G[edge[0]][edge[1]]['weight'] = 1
+    nx.write_gpickle(G, "examples/karate.edgelist")
 
 
-def batchgen_train(adj_list, numNodes, batch_size, negativeRatio, negative_sampling):
+def test(args):
+    pass
 
-    table_size = 1e8
-    power = 0.75
-    sampling_table = None
-
-    data = np.ones((adj_list.shape[0]), dtype=np.int8)
-    mat = csr_matrix((data, (adj_list[:,0], adj_list[:,1])), shape = (numNodes, numNodes), dtype=np.int8)
-    batch_size_ones = np.ones((batch_size), dtype=np.int8)
-
-    nb_train_sample = adj_list.shape[0]
-    index_array = np.arange(nb_train_sample)
-
-    nb_batch = int(np.ceil(nb_train_sample / float(batch_size)))
-    batches = [(i * batch_size, min(nb_train_sample, (i + 1) * batch_size)) for i in range(0, nb_batch)]
-
-    if negative_sampling == "NON-UNIFORM":
-        print("Pre-procesing for non-uniform negative sampling!")
-        node_degree = np.zeros(numNodes)
-
-        for i in range(len(adj_list)):
-            node_degree[adj_list[i,0]] += 1
-            node_degree[adj_list[i,1]] += 1
-
-        norm = sum([math.pow(node_degree[i], power) for i in range(numNodes)])
-
-        sampling_table = np.zeros(int(table_size), dtype=np.uint32)
-
-        p = 0
-        i = 0
-        for j in range(numNodes):
-            p += float(math.pow(node_degree[j], power)) / norm
-            while i < table_size and float(i) / table_size < p:
-                sampling_table[i] = j
-                i += 1
-
-    while 1:
-
-        for batch_index, (batch_start, batch_end) in enumerate(batches):
-            pos_edge_list = index_array[batch_start:batch_end]
-            pos_left_nodes = adj_list[pos_edge_list, 0]
-            pos_right_nodes = adj_list[pos_edge_list, 1]
-
-            pos_relation_y = batch_size_ones[0:len(pos_edge_list)]
-
-            neg_left_nodes = np.zeros(len(pos_edge_list)*negativeRatio, dtype=np.int32)
-            neg_right_nodes = np.zeros(len(pos_edge_list)*negativeRatio, dtype=np.int32)
-
-            neg_relation_y = np.zeros(len(pos_edge_list)*negativeRatio, dtype=np.int8)
-
-            h = 0
-            for i in pos_left_nodes:
-                for k in range(negativeRatio):
-                    rn = sampling_table[random.randint(0, table_size - 1)] if negative_sampling == "NON-UNIFORM" else random.randint(0, numNodes - 1)
-                    while mat[i, rn] == 1 or i == rn:
-                        rn = sampling_table[random.randint(0, table_size - 1)] if negative_sampling == "NON-UNIFORM" else random.randint(0, numNodes - 1)
-                    neg_left_nodes[h] = i
-                    neg_right_nodes[h] = rn
-                    h += 1
-
-            left_nodes = np.concatenate((pos_left_nodes, neg_left_nodes), axis=0)
-            right_nodes = np.concatenate((pos_right_nodes, neg_right_nodes), axis=0)
-            relation_y = np.concatenate((pos_relation_y, neg_relation_y), axis=0)
-
-            yield ([left_nodes, right_nodes], [relation_y])
-
-
-def svm_classify(X, label, split_ratios, C):
-    """
-    trains a linear SVM on the data
-    input C specifies the penalty factor for SVM
-    """
-    train_size = int(len(X)*split_ratios[0])
-    val_size = int(len(X)*split_ratios[1])
-
-    train_data, valid_data, test_data = X[0:train_size], X[train_size:train_size + val_size], X[train_size + val_size:]
-    train_label, valid_label, test_label = label[0:train_size], label[train_size:train_size + val_size], label[train_size + val_size:]
-
-    print('training SVM...')
-    clf = svm.SVC(C=C, kernel='linear')
-    clf.fit(train_data, train_label.ravel())
-
-    p = clf.predict(train_data)
-    train_acc = accuracy_score(train_label, p)
-    p = clf.predict(valid_data)
-    valid_acc = accuracy_score(valid_label, p)
-    p = clf.predict(test_data)
-    test_acc = accuracy_score(test_label, p)
-
-    return [train_acc, valid_acc, test_acc]
-
-
-def load_pickle(f):
-    """
-    loads and returns the content of a pickled file
-    it handles the inconsistencies between the pickle packages available in Python 2 and 3
-    """
-    try:
-        import cPickle as thepickle
-    except ImportError:
-        import _pickle as thepickle
-
-    try:
-        ret = thepickle.load(f, encoding='latin1')
-    except TypeError:
-        ret = thepickle.load(f)
-
-    return ret
-
-
-if __name__ == "__main__":
-
-    label_file = 'dblp/labels.txt'
-    edge_file = 'dblp/adjedges.txt'
-    epoch_num = 100
-    factors = 128
-    batch_size = 1000
-    negative_sampling = "UNIFORM" # UNIFORM or NON-UNIFORM
-    negativeRatio = 5
-    split_ratios = [0.6, 0.2, 0.2]
-    svm_C = 0.1
-
-    np.random.seed(2017)
-    random.seed(2017)
-
-    adj_list, labels_dict = load_data(label_file, edge_file)
-    epoch_train_size = (((int(len(adj_list)/batch_size))*(1 + negativeRatio)*batch_size) + (1 + negativeRatio)*(len(adj_list)%batch_size))
-    numNodes = np.max(adj_list.ravel()) + 1
-    data_gen = batchgen_train(adj_list, numNodes, batch_size, negativeRatio, negative_sampling)
-
-    model, embed_generator = create_model(numNodes, factors)
-    model.summary()
-
-    model.compile(optimizer='rmsprop', loss={'left_right_dot': LINE_loss})
-
-    model.fit_generator(data_gen, samples_per_epoch=epoch_train_size, nb_epoch=epoch_num, verbose=1)
-
-    new_X = []
-    new_label = []
-
-    keys = list(labels_dict.keys())
-    np.random.shuffle(keys)
-
-    for k in keys:
-        v = labels_dict[k]
-        x = embed_generator.predict_on_batch([np.asarray([k]), np.asarray([k])])
-        new_X.append(x[0][0] + x[1][0])
-        new_label.append(labels_dict[k])
-
-    new_X = np.asarray(new_X, dtype=np.float32)
-    new_label = np.asarray(new_label, dtype=np.int32)
-
-    [train_acc, valid_acc, test_acc] = svm_classify(new_X, new_label, split_ratios, svm_C)
-
-    print("Train Acc:", train_acc, " Validation Acc:", valid_acc, " Test Acc:", test_acc)
+if __name__ == '__main__':
+    read_graph_write_pkl('examples/karate.edgelist', 'converted')
+    main()
+    # with open('embedding/embedding-line-second-order.pkl', 'rb') as pickle_file:
+    #     content = pickle.load(pickle_file)
+    #     print(content)
