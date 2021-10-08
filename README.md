@@ -1,11 +1,15 @@
 
 # Pipeline
-python run.py --config config.json
+- to run the program: 
+1. config.json
+![example config file](config.png?raw=true "example config file")
+2. python run.py --config config.json
 
-
+- to convert graph data format using data.py:
+1. read_graph: read graph in the format of edgelist/adglist/matfile/csv
+2. save_graph: save graph to pickle format
 
 # Model Fitting
-
 ## Probabilistic Models
 
 ### 1. Exchangeable Type Models
@@ -19,7 +23,6 @@ python run.py --config config.json
 - ERGM
 
 ## Embedding Methods
-
 ### 1. Transductive Methods
 - DeepWalk (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
 

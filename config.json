@@ -1,11 +1,10 @@
 {
-    "data": "blogcatalog",
-    "format": "mat",
+    "data": "karate",
     "weighted": false,
     "directed": false,
     "method": "node2vec",
     "task": "NodeClassification",
-    "emb-path": "embedding/blogcatalog-n2v.emd",
+    "emb-path": "embedding/karate-n2v.emd",
     "train_percent": [
         0.1,
         0.5,
@@ -20,7 +19,8 @@
     "num-walks": 10,
     "walk-size": 80,
     "num-shuffles": 2,
-    "order": 5,
-    "mat-variable-name": "network",
-    "mat-label-name": "group"
+    "order": 5
 }
+
+
+
