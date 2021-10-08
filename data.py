@@ -1,6 +1,8 @@
 import networkx as nx
-import argparse
 import numpy as np
+from scipy.io import loadmat
+from scipy.sparse import issparse
+from networkx import Graph
 
 def parse_args():
 
@@ -42,7 +44,59 @@ def main(args):
     print("file saved to {}".format(adjlist_fname))
 
 
-if __name__ == "__main__":
-    args = parse_args()
-    args.format = 'mat'
-    main(args)
+def read_graph(format, input, directed, weighted, variable_name):
+    '''
+    Reads the input network in networkx.
+    '''
+    if format == "edgelist":
+        G = read_graph_edgelist(input, directed, weighted)
+    elif format == "adjlist":
+        G = read_graph_adjlist(input, directed, weighted)
+    elif format == "mat":
+        G = read_graph_mat(input, directed, weighted, variable_name)
+    else:
+        raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % format)
+
+    return G
+
+
+def read_graph_edgelist(input, directed, weighted):
+    if weighted:
+        G = nx.read_edgelist(input, nodetype=int, data=(('weight', float),))
+    else:
+        G = nx.read_edgelist(input, nodetype=int)
+        for edge in G.edges():
+            G[edge[0]][edge[1]]['weight'] = 1
+
+    if directed == False:
+        G = G.to_undirected()
+
+    return G
+
+
+def read_graph_adjlist(input, directed, weighted):
+    G = nx.read_adjlist(input, nodetype=int)
+
+    if directed == False:
+        G = G.to_undirected()
+
+    return G
+
+
+def read_graph_mat(input, directed, weighted, variable_name):
+    mat_varables = loadmat(input)
+    x = mat_varables[variable_name]
+
+    G = Graph()
+
+    if issparse(x):
+        cx = x.tocoo()
+        for i, j, v in zip(cx.row, cx.col, cx.data):
+            G.add_edge(i, j, weight=1)
+    else:
+        raise Exception("Dense matrices not yet supported.")
+
+    if directed == False:
+        G.to_undirected()
+
+    return G

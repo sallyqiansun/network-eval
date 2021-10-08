@@ -7,31 +7,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import node2vec as N2V
 import random as rand
 
-def main():
-    parser = ArgumentParser("link prediction",
-                            formatter_class=ArgumentDefaultsHelpFormatter,
-                            conflict_handler='resolve')
-    parser.add_argument("--emb", required=True, help='Embeddings file')
-    parser.add_argument("--network", required=True,
-                        help='The input graph, network file. ')
-    parser.add_argument('--format', default='edgelist',
-						help='File format of input network file. ')
-    parser.add_argument("--adj-matrix-name", default='network',
-                        help='Variable name of the adjacency matrix inside the .mat file.')
-    parser.add_argument("--label-matrix-name", default='group',
-                        help='Variable name of the labels matrix inside the .mat file.')
-    parser.add_argument('--regen', dest='regen', action='store_true',
-                        help='Regenerate random positive/negative links')
-    parser.add_argument("--num-shuffle", default=5, type=int, help='Number of shuffles.')
-    parser.add_argument("--all", default=False, action='store_true',
-                        help='The embeddings are evaluated on all training percents from 10 to 90 when this flag is set to true. '
-                             'By default, only training percents of 10, 50 and 90 are used.')
-
-    args = parser.parse_args()
-
+def run(network_file, config):
     # 0. Files
-    embeddings_file = args.emb
-    network_file = args.network
+    embeddings_file = config['emb-path']
 
     # 1. Load Embeddings
     # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
@@ -49,17 +27,13 @@ def main():
     f.close()
 
     # 2. Read graph
-    G = N2V.read_graph(args.format)
+    G = N2V.read_graph(config['format'])
 
 
     # 3. Set positive and negative training sets
-    if args.all:
-        training_percents = np.asarray(range(1, 10)) * .1
-    else:
-        training_percents = [0.1, 0.5, 0.9]
-
-    for train_percent in training_percents:
-        return
+    for train_percent in config['train_percent']:
+        labeled = generate_pos_neg_links(G)
+        # TODO: finish this training function
 
     # 4. Evaluate
 

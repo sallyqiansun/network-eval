@@ -31,31 +31,8 @@ def sparse2graph(x):
     return {str(k): [str(x) for x in v] for k,v in iteritems(G)}
 
 
-def main():
-    parser = ArgumentParser("node classification",
-                            formatter_class=ArgumentDefaultsHelpFormatter,
-                            conflict_handler='resolve')
-    parser.add_argument("--emb", required=True, help='Embeddings file')
-    parser.add_argument("--network", required=True,
-                        help='The input graph, network file. ')
-    parser.add_argument('--format', default='edgelist',
-						help='File format of input network file. ')
-    parser.add_argument("--adj-matrix-name", default='network',
-                        help='Variable name of the adjacency matrix inside the .mat file.')
-    parser.add_argument("--label-matrix-name", default='group',
-                        help='Variable name of the labels matrix inside the .mat file.')
-    parser.add_argument("--num-shuffles", default=2, type=int, help='Number of shuffles.')
-    parser.add_argument("--all", default=False, action='store_true',
-                        help='The embeddings are evaluated on all training percents from 10 to 90 when this flag is set to true. '
-                             'By default, only training percents of 10, 50 and 90 are used.')
-
-    args = parser.parse_args()
-
-    # 0. Files
-    embeddings_file = args.emb
-    network_file = args.network
-
-    # 1. Load Embeddings
+def run(network_file, config):
+    embeddings_file = config['emb-path']
 
     # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
     with open(embeddings_file) as f:
@@ -72,29 +49,31 @@ def main():
     f.close()
 
     # 2. Load labels
-    if args.format == "mat":
+    if config['format'] == "mat":
         mat = loadmat(network_file)
-        A = mat[args.adj_matrix_name]
+        A = mat[config['mat-variable-name']]
         graph = sparse2graph(A)
-        labels_matrix = mat[args.label_matrix_name]
+        labels_matrix = mat[config['mat-variable-name']]
         labels_count = labels_matrix.shape[1]
         mlb = MultiLabelBinarizer(range(labels_count))
-
+    elif config['format'] == "adjlist":
+        #TODO: finish this
+        pass
+    elif config['format'] == "edgelist":
+        # TODO: finish this
+        pass
     # Map nodes to their features (note:  assumes nodes are labeled as integers 1:N)
     features_matrix = numpy.asarray([embeddings[str(node)] for node in range(len(graph))])
 
     # 2. Shuffle, to create train/test groups
     shuffles = []
-    for x in range(args.num_shuffles):
+    for x in range(config['num-shuffles']):
         shuffles.append(skshuffle(features_matrix, labels_matrix))
 
     # 3. to score each train/test group
     all_results = defaultdict(list)
 
-    if args.all:
-        training_percents = numpy.asarray(range(1, 10)) * .1
-    else:
-        training_percents = [0.1, 0.5, 0.9]
+    training_percents = config['train_percent']
     for train_percent in training_percents:
         for shuf in shuffles:
 
@@ -158,7 +137,3 @@ def main():
         print('Average score:', dict(avg_score))
         print('-------------------')
     sys.stdout.close()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
