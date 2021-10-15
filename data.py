@@ -2,7 +2,14 @@ import networkx as nx
 from scipy.io import loadmat
 from scipy.sparse import issparse
 from networkx import Graph
+import pandas as pd
+import argparse
 
+def save_graph(format, data, data_path, directed=False, weighted=False, variable_name="network", label_name="group"):
+    G = read_graph(format, data_path, directed, weighted, variable_name, label_name)
+    pickle_path = "examples/" + data + ".gpickle"
+    nx.write_gpickle(G, pickle_path)
+    print("Data saved to", pickle_path)
 
 def read_graph(format, data_path, directed=False, weighted=False, variable_name="network", label_name="group"):
     '''
@@ -14,8 +21,10 @@ def read_graph(format, data_path, directed=False, weighted=False, variable_name=
         G = read_graph_adjlist(data_path, directed, weighted)
     elif format == "mat":
         G = read_graph_mat(data_path, directed, weighted, variable_name, label_name)
+    elif format == "csv":
+        G = read_graph_csv(data_path, directed, weighted)
     else:
-        raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % format)
+        raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat', 'csv" % format)
 
     return G
 
@@ -33,7 +42,6 @@ def read_graph_edgelist(input, directed, weighted):
 
     return G
 
-
 def read_graph_adjlist(input, directed, weighted):
     G = nx.read_adjlist(input, nodetype=int)
 
@@ -41,7 +49,6 @@ def read_graph_adjlist(input, directed, weighted):
         G = G.to_undirected()
 
     return G
-
 
 def read_graph_mat(input, directed, weighted, variable_name):
     mat_varables = loadmat(input)
@@ -61,9 +68,21 @@ def read_graph_mat(input, directed, weighted, variable_name):
 
     return G
 
+def read_graph_csv(input, directed, weighted):
+    data = open(input, "r")
+    if weighted:
+        G = nx.read_edgelist(data, delimiter=',', nodetype=int, data=(('weight', float),))
+    else:
+        G = nx.read_edgelist(data, delimiter=',', nodetype=int)
+        for edge in G.edges():
+            G[edge[0]][edge[1]]['weight'] = 1
 
-def save_graph(format, data, data_path, directed=False, weighted=False, variable_name="network", label_name="group"):
-    G = read_graph(format, data_path, directed, weighted, variable_name, label_name)
-    pickle_path = "examples/" + data + ".gpickle"
-    nx.write_gpickle(G, pickle_path)
-    print("Data saved to", pickle_path)
+    if directed == False:
+        G.to_undirected()
+
+    return G
+
+
+# save_graph('csv', 'cora', 'examples/cora.csv', directed=False, weighted=False)
+
+
