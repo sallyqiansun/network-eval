@@ -1,0 +1,15 @@
+Train percent: 0.1
+Shuffle #1:    {'micro': 0.3819444444444445, 'macro': 0.23475888437937772, 'accuracy': 0.03225806451612903, 'zero_one_loss': 0.967741935483871, 'log_loss': 107.57291630303101}
+Shuffle #2:    {'micro': 0.2682926829268293, 'macro': 0.29747911371012015, 'accuracy': 0.0, 'zero_one_loss': 1.0, 'log_loss': 106.78072823880831}
+Average score: {'micro': 0.32511856368563685, 'macro': 0.26611899904474895, 'accuracy': 0.016129032258064516, 'zero_one_loss': 0.9838709677419355, 'log_loss': 107.17682227091966}
+-------------------
+Train percent: 0.5
+Shuffle #1:    {'micro': 0.4868421052631579, 'macro': 0.21364779011837837, 'accuracy': 0.17647058823529413, 'zero_one_loss': 0.8235294117647058, 'log_loss': 87.01741368267574}
+Shuffle #2:    {'micro': 0.3870967741935484, 'macro': 0.21519607843137253, 'accuracy': 0.0, 'zero_one_loss': 1.0, 'log_loss': 82.88247555831423}
+Average score: {'micro': 0.4369694397283531, 'macro': 0.21442193427487544, 'accuracy': 0.08823529411764706, 'zero_one_loss': 0.9117647058823529, 'log_loss': 84.94994462049499}
+-------------------
+Train percent: 0.9
+Shuffle #1:    {'micro': 0.5, 'macro': 0.09999999999999998, 'accuracy': 0.25, 'zero_one_loss': 0.75, 'log_loss': 55.27390049516579}
+Shuffle #2:    {'micro': 0.5, 'macro': 0.0546218487394958, 'accuracy': 0.25, 'zero_one_loss': 0.75, 'log_loss': 45.5145361072005}
+Average score: {'micro': 0.5, 'macro': 0.07731092436974789, 'accuracy': 0.25, 'zero_one_loss': 0.75, 'log_loss': 50.394218301183145}
+-------------------

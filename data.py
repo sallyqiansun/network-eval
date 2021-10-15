@@ -83,6 +83,6 @@ def read_graph_csv(input, directed, weighted):
     return G
 
 
-# save_graph('csv', 'cora', 'examples/cora.csv', directed=False, weighted=False)
+# save_graph('edgelist', 'karate', 'examples/karate.edgelist', directed=False, weighted=False)
 
 

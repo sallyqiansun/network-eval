@@ -10,6 +10,7 @@ from sklearn.metrics import f1_score, accuracy_score, zero_one_loss, log_loss
 from scipy.io import loadmat
 from sklearn.utils import shuffle as skshuffle
 from sklearn.preprocessing import MultiLabelBinarizer
+import networkx as nx
 
 class TopKRanker(OneVsRestClassifier):
     def predict(self, X, top_k_list):
@@ -31,7 +32,7 @@ def sparse2graph(x):
     return {str(k): [str(x) for x in v] for k,v in iteritems(G)}
 
 
-def run(network_file, config):
+def run(graph, config):
     embeddings_file = config['emb-path']
 
     # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
@@ -48,22 +49,12 @@ def run(network_file, config):
             embeddings[node] = list(embedding)
     f.close()
 
-    # 2. Load labels
-    if config['format'] == "mat":
-        mat = loadmat(network_file)
-        A = mat[config['mat-variable-name']]
-        graph = sparse2graph(A)
-        labels_matrix = mat[config['mat-variable-name']]
-        labels_count = labels_matrix.shape[1]
-        mlb = MultiLabelBinarizer(range(labels_count))
-    elif config['format'] == "adjlist":
-        #TODO: finish this
-        pass
-    elif config['format'] == "edgelist":
-        # TODO: finish this
-        pass
+    # 2. Get labels from gpickle graph file
+    labels_matrix = nx.adjacency_matrix(graph)
+    mlb = MultiLabelBinarizer(range(labels_matrix.shape[1]))
+
     # Map nodes to their features (note:  assumes nodes are labeled as integers 1:N)
-    features_matrix = numpy.asarray([embeddings[str(node)] for node in range(len(graph))])
+    features_matrix = numpy.asarray([embeddings[str(node+1)] for node in range(len(graph.nodes()))])
 
     # 2. Shuffle, to create train/test groups
     shuffles = []
@@ -119,21 +110,4 @@ def run(network_file, config):
 
             all_results[train_percent].append(results)
 
-    eva_fname = 'evaluation/'+ network_file[network_file.find('/'):network_file.find('.mat')] + '-' + embeddings_file[embeddings_file.find('-'):embeddings_file.find('.emd')] + '.txt'
-    sys.stdout = open(eva_fname, "w")
-
-    print('Results, using embeddings of dimensionality', X.shape[1])
-    print('-------------------')
-    for train_percent in sorted(all_results.keys()):
-        print('Train percent:', train_percent)
-        for index, result in enumerate(all_results[train_percent]):
-            print('Shuffle #%d:   ' % (index + 1), result)
-        avg_score = defaultdict(float)
-        for score_dict in all_results[train_percent]:
-            for metric, score in iteritems(score_dict):
-                avg_score[metric] += score
-        for metric in avg_score:
-            avg_score[metric] /= len(all_results[train_percent])
-        print('Average score:', dict(avg_score))
-        print('-------------------')
-    sys.stdout.close()
+    return all_results

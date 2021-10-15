@@ -1,11 +1,11 @@
 
 # Pipeline
-- to run the program: 
-1. config.json
+- install dependencies in requirements.txt
+- run the program: 
+`python run.py --config config.json`
 ![example config file](config.png?raw=true "example config file")
-2. python run.py --config config.json
 
-- to convert graph data format using data.py:
+- to convert graph data format, run data.py:
 1. read_graph: read graph in the format of edgelist/adglist/matfile/csv
 2. save_graph: save graph to pickle format
 
