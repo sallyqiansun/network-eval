@@ -3,9 +3,9 @@
     "weighted": false,
     "directed": false,
     "method": "node2vec",
-    "task": "NodeClassification",
-    "emb-path": "embedding/karate-n2v.emd",
-    "eval-path": "evaluation/karate-n2v.txt",
+    "task": "LinkPrediction",
+    "emb-path": "embedding/karate-n2v-new.emd",
+    "eval-path": "evaluation/karate-n2v-new.txt",
     "train_percent": [
         0.1,
         0.5,

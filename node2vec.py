@@ -179,7 +179,7 @@ def simulate_and_embed(config, G, workers=8):
 	else:
 		raise Exception("This embedding method only supports deepwalk and node2vec.")
 
-	model.wv.save_word2vec_format(config['emb-path'])
+	model.wv.save(config['emb-path'])
 	print("Embedding saved to {}.".format(config['emb-path']))
 	return
 

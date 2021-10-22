@@ -34,8 +34,8 @@ print("Completed training on task", config["task"])
 
 
 # evaluate
-evaluate.save(result, config)
-print("Evaluation results saved to", config['eval-path'])
+# evaluate.save(result, config)
+# print("Evaluation results saved to", config['eval-path'])
 
 
 

@@ -51,7 +51,8 @@ def run(graph, config):
 
     # 2. Get labels from gpickle graph file
     labels_matrix = nx.adjacency_matrix(graph)
-    mlb = MultiLabelBinarizer(range(labels_matrix.shape[1]))
+    mlb = MultiLabelBinarizer()
+    mlb.fit_transform(range(labels_matrix))
 
     # Map nodes to their features (note:  assumes nodes are labeled as integers 1:N)
     features_matrix = numpy.asarray([embeddings[str(node+1)] for node in range(len(graph.nodes()))])
