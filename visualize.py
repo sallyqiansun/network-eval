@@ -1,11 +1,12 @@
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 
-def visualize(path):
+def visualize(config):
+    path = config['emb-path']
     with open(path) as f:
         f.readline().split()
         emb = {}
@@ -25,17 +26,23 @@ def visualize(path):
     for i in range(len(emb)):
         embeddings[i, :] = emb[l_emb[i]]
 
-    emb_pca = PCA().fit_transform(embeddings)
-    emb_tsne = TSNE().fit_transform(embeddings)
+    X_pca = PCA(n_components = 2).fit_transform(embeddings)
+    kmeans = KMeans()
+    kmeans.fit(X_pca)
+    labels = kmeans.labels_
+    plt.figure(figsize=(10, 10))
+    plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, s=100, cmap="prism", edgecolor="grey")
+    for i, k in enumerate(list(emb.keys())):
+        plt.annotate('', X_pca[i], horizontalalignment='center', verticalalignment='center',)
+
+    plt.xlabel("x1")
+    plt.ylabel("x2")
+    plt.title("PCA and K-means")
+    plt.grid()
+    plt.savefig(config['fig-path'])
 
 
-    fig, ax = plt.subplots()
-    ax.scatter(emb_tsne[:, 0], emb_tsne[:, 1], s=3)
-    for x, y, node in zip(emb_tsne[:, 0], emb_tsne[:, 1], list(emb)):
-        ax.annotate('', xy=(x, y), size=8)
-    fig.suptitle('node embeddings', fontsize=10)
-    fig.set_size_inches(10, 10)
-    fig.savefig("test.png")
-    plt.close(fig)
-
-visualize(path="embedding/karate-mf.emb")
+import json
+config_file = open("config.json", "r")
+config = json.load(config_file)
+visualize(config)

@@ -32,7 +32,7 @@ result = task.train(data_path, graph, config)
 print("Completed training on task", config["task"])
 
 #visualization
-visualize(config['emb-path'])
+visualize(config)
 
 # evaluate
 evaluate.save(result, config)

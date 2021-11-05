@@ -4,7 +4,7 @@
     "directed": false,
     "method": "MatrixFactorization",
     "task": "LinkPrediction",
-    "emb-path": "embedding/karate-mf.emb",
+    "emb-path": "embedding/karate-mf.emd",
     "eval-path": "evaluation/karate-mf.txt",
     "train_percent": [
         0.1,
@@ -21,7 +21,8 @@
     "walk-size": 80,
     "num-shuffles": 2,
     "order": 5,
-    "k": 100
+    "k": 100,
+    "fig-path": "plots/karate-mf.png"
 }
 
 
