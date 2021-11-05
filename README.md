@@ -24,6 +24,8 @@
 
 ## Embedding Methods
 ### 1. Transductive Methods
+- Matrix Factorization 
+
 - DeepWalk (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
 
 - Node2Vec (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
