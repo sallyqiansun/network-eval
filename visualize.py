@@ -20,7 +20,7 @@ def visualize(path):
             emb[node] = list(embedding)
     f.close()
 
-    embeddings = np.empty(shape=(len(emb), 100))
+    embeddings = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
     l_emb = list(emb)
     for i in range(len(emb)):
         embeddings[i, :] = emb[l_emb[i]]
@@ -35,5 +35,7 @@ def visualize(path):
         ax.annotate('', xy=(x, y), size=8)
     fig.suptitle('node embeddings', fontsize=10)
     fig.set_size_inches(10, 10)
-    plt.show()
+    fig.savefig("test.png")
+    plt.close(fig)
 
+visualize(path="embedding/karate-mf.emb")
