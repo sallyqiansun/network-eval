@@ -10,7 +10,7 @@ def train(data_path, graph, config):
 
 
     elif config['task'] == "LinkPrediction":
-        return LinkPrediction.run(data_path, graph, config)
+        return LinkPrediction.run(graph, config)
 
 
     else:

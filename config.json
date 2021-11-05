@@ -2,10 +2,10 @@
     "data": "karate",
     "weighted": false,
     "directed": false,
-    "method": "node2vec",
+    "method": "MatrixFactorization",
     "task": "LinkPrediction",
-    "emb-path": "embedding/karate-n2v-new.emd",
-    "eval-path": "evaluation/karate-n2v-new.txt",
+    "emb-path": "embedding/karate-mf.emb",
+    "eval-path": "evaluation/karate-mf.txt",
     "train_percent": [
         0.1,
         0.5,
@@ -20,7 +20,8 @@
     "num-walks": 10,
     "walk-size": 80,
     "num-shuffles": 2,
-    "order": 5
+    "order": 5,
+    "k": 100
 }
 
 
