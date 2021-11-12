@@ -76,7 +76,20 @@ def run(graph, config, method="hadamard"):
     all_results = defaultdict(list)
     # 1. get embeddings graph ready
     embeddings_file = config['emb-path']
-    emb = KeyedVectors.load(embeddings_file, mmap='r')
+
+    # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
+    with open(embeddings_file) as f:
+        f.readline().split()
+        emb = {}
+        for line in f:
+            l = line.strip().split()
+            node = str(l[0])
+            embedding = l[1:]
+            embedding = [float(i) for i in embedding]
+            embedding = embedding / np.linalg.norm(embedding)
+            np.nan_to_num(embedding, nan=0)
+            emb[node] = list(embedding)
+    f.close()
 
     # # 2. Set positive and negative training sets
     for train_percent in config['train_percent']:

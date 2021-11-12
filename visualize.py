@@ -42,7 +42,7 @@ def visualize(config):
     plt.savefig(config['fig-path'])
 
 
-import json
-config_file = open("config.json", "r")
-config = json.load(config_file)
-visualize(config)
+# import json
+# config_file = open("config.json", "r")
+# config = json.load(config_file)
+# visualize(config)

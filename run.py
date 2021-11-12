@@ -32,7 +32,7 @@ result = task.train(data_path, graph, config)
 print("Completed training on task", config["task"])
 
 #visualization
-visualize(config)
+visualize.visualize(config)
 
 # evaluate
 evaluate.save(result, config)
