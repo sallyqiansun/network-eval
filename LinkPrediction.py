@@ -72,7 +72,8 @@ def generate_pos_neg_links(G):
     return pos_edge_list, neg_edge_list
 
 
-def run(graph, config, method="hadamard"):
+def run(graph, config):
+    method = config["edge-feature"]
     all_results = defaultdict(list)
     # 1. get embeddings graph ready
     embeddings_file = config['emb-path']
@@ -81,9 +82,10 @@ def run(graph, config, method="hadamard"):
     with open(embeddings_file) as f:
         f.readline().split()
         emb = {}
+        shape_0 = 0
         for line in f:
             l = line.strip().split()
-            node = str(l[0])
+            node = l[0]
             embedding = l[1:]
             embedding = [float(i) for i in embedding]
             embedding = embedding / np.linalg.norm(embedding)
@@ -93,6 +95,7 @@ def run(graph, config, method="hadamard"):
 
     # # 2. Set positive and negative training sets
     for train_percent in config['train_percent']:
+        print("training percentage: ", train_percent)
         pos_links, neg_links = generate_pos_neg_links(graph)
         # train-test for pos_links
         train_num = int(train_percent*len(pos_links))
@@ -122,6 +125,8 @@ def run(graph, config, method="hadamard"):
 
         clf.fit(train_feat, train_labels)
         auc_test = roc_auc_score(clf.predict(test_feat), test_labels)
+        print('auc: {:.4f}'.format(auc_test))
+        print()
         all_results[train_percent].append(auc_test)
 
     return all_results

@@ -9,6 +9,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import networkx as nx
 
 def run(graph, config):
+    all_results = defaultdict(list)
     embeddings_file = config['emb-path']
     A = nx.adjacency_matrix(graph)
 
@@ -60,8 +61,9 @@ def run(graph, config):
         print('accuracy score: {:.4f}'.format(acc))
         print('zero-one loss: {:.4f}'.format(zero_one))
         print()
-        print()
 
-    return
+        all_results[train_pct].extend([f1_micro, f1_macro, acc, zero_one])
+
+    return all_results
 
 
