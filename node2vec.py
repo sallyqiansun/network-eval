@@ -8,16 +8,14 @@ import random
 import numpy as np
 
 
-def node2vec_walk(G, walk_length, start_node):
+def node2vec_walk(G, config, start_node, alias_nodes, alias_edges):
 	'''
 	Simulate a random walk starting from start node.
 	'''
-	alias_nodes = G.alias_nodes
-	alias_edges = G.alias_edges
 
 	walk = [start_node]
 
-	while len(walk) < walk_length:
+	while len(walk) < config['walk-size']:
 		cur = walk[-1]
 		cur_nbrs = sorted(G.neighbors(cur))
 		if len(cur_nbrs) > 0:
@@ -33,10 +31,11 @@ def node2vec_walk(G, walk_length, start_node):
 
 	return walk
 
-def simulate_walks(G, num_walks, walk_length):
+def simulate_walks(G, config, alias_nodes, alias_edges):
 	'''
 	Repeatedly simulate random walks from each node.
 	'''
+	num_walks = config['num-walks']
 	walks = []
 	nodes = list(G.nodes())
 	print ('Walk iteration:')
@@ -44,11 +43,12 @@ def simulate_walks(G, num_walks, walk_length):
 		print (str(walk_iter+1), '/', str(num_walks))
 		random.shuffle(nodes)
 		for node in nodes:
-			walks.append(node2vec_walk(G, walk_length=walk_length, start_node=node))
+			walks.append(node2vec_walk(G, config=config, start_node=node, alias_nodes=alias_nodes, alias_edges=alias_edges))
 
 	return walks
 
-def get_alias_edge(G, src, dst, p, q):
+
+def get_alias_edge(G, src, dst, config):
 	'''
 	Get the alias edge setup lists for a given edge.
 	'''
@@ -56,11 +56,11 @@ def get_alias_edge(G, src, dst, p, q):
 	unnormalized_probs = []
 	for dst_nbr in sorted(G.neighbors(dst)):
 		if dst_nbr == src:
-			unnormalized_probs.append(G[dst][dst_nbr]['weight']/p)
+			unnormalized_probs.append(G[dst][dst_nbr]['weight']/config['p'])
 		elif G.has_edge(dst_nbr, src):
 			unnormalized_probs.append(G[dst][dst_nbr]['weight'])
 		else:
-			unnormalized_probs.append(G[dst][dst_nbr]['weight']/q)
+			unnormalized_probs.append(G[dst][dst_nbr]['weight']/config['q'])
 	norm_const = sum(unnormalized_probs)
 	normalized_probs =  [float(u_prob)/norm_const for u_prob in unnormalized_probs]
 
@@ -80,18 +80,15 @@ def preprocess_transition_probs(G, config):
 
 	alias_edges = {}
 
-	if config['directed']:
+	if config['directed'] == 'true':
 		for edge in G.edges():
-			alias_edges[edge] = get_alias_edge(G, edge[0], edge[1], p=config['p'], q=config['q'])
+			alias_edges[edge] = get_alias_edge(G, edge[0], edge[1], config)
 	else:
 		for edge in G.edges():
-			alias_edges[edge] = get_alias_edge(G, edge[0], edge[1], p=config['p'], q=config['q'])
-			alias_edges[(edge[1], edge[0])] = get_alias_edge(G, edge[1], edge[0], p=config['p'], q=config['q'])
+			alias_edges[edge] = get_alias_edge(G, edge[0], edge[1], config)
+			alias_edges[(edge[1], edge[0])] = get_alias_edge(G, edge[1], edge[0], config)
 
-	G.alias_nodes = alias_nodes
-	G.alias_edges = alias_edges
-
-	return
+	return alias_nodes, alias_edges
 
 def alias_setup(probs):
 	'''
@@ -137,15 +134,16 @@ def alias_draw(J, q):
 	else:
 		return J[kk]
 
+def learn_embeddings(walks, config):
+	walks = [map(str, walk) for walk in walks]
+	model = Word2Vec(walks, size=config['dimensions'], window=config['window_size'], min_count=0, sg=1, )
 
-
-def simulate_and_embed(config, G, workers=8):
+def run(config, G, workers=8):
 	'''
 	Learn embeddings by optimizing the Skipgram objective using SGD.
 	'''
 
 	rand = random.Random(config['seed'])
-	print("Number of nodes: {}".format(len(G.nodes())))
 
 	num_walks = len(G.nodes()) * config['num-walks']
 	print("Number of walks: {}".format(num_walks))
@@ -154,10 +152,11 @@ def simulate_and_embed(config, G, workers=8):
 	print("Data size (walks*length): {}".format(data_size))
 
 	if config['method'] == "node2vec":
-		preprocess_transition_probs(G, config)
+		alias_nodes = preprocess_transition_probs(G, config)[0]
+		alias_edges = preprocess_transition_probs(G, config)[1]
 
 		print("Walking...")
-		walks = simulate_walks(G, num_walks=config['num-walks'], walk_length=config['walk-size'])
+		walks = simulate_walks(G, config, alias_nodes, alias_edges)
 		walks = [list(map(str, walk)) for walk in walks]
 
 		print("Training...")
@@ -167,10 +166,10 @@ def simulate_and_embed(config, G, workers=8):
 		if config['p'] != 1 or config['q'] != 1:
 			raise Exception("For deepwalk, p=q=1.")
 		else:
-			preprocess_transition_probs(G, config)
+			alias_nodes, alias_edges = preprocess_transition_probs(G, config)
 
 			print("Walking...")
-			walks = simulate_walks(G, num_walks=config['num-walks'], walk_length=config['walk-size'])
+			walks = simulate_walks(G, config, alias_nodes, alias_edges)
 			walks = [list(map(str, walk)) for walk in walks]
 
 			print("Training...")
@@ -179,7 +178,7 @@ def simulate_and_embed(config, G, workers=8):
 	else:
 		raise Exception("This embedding method only supports deepwalk and node2vec.")
 
-	model.wv.save(config['emb-path'])
+	model.wv.save_word2vec_format(config['emb-path'], binary=False)
 	print("Embedding saved to {}.".format(config['emb-path']))
 	return
 

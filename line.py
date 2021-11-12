@@ -183,14 +183,14 @@ def read_graph_write_pkl(input_file, output_file):
     G = nx.read_edgelist(input_file, nodetype=int, data=(('weight', float),))
     for edge in G.edges():
         G[edge[0]][edge[1]]['weight'] = 1
-    nx.write_gpickle(G, "examples/karate.edgelist")
+    nx.write_gpickle(G, "data/karate.edgelist")
 
 
 def test(args):
     pass
 
 if __name__ == '__main__':
-    read_graph_write_pkl('examples/karate.edgelist', 'converted')
+    read_graph_write_pkl('data/karate.edgelist', 'converted')
     main()
     # with open('embedding/embedding-line-second-order.pkl', 'rb') as pickle_file:
     #     content = pickle.load(pickle_file)

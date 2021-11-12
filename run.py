@@ -20,6 +20,8 @@ config = json.load(config_file)
 # load data
 data_path = "examples/" + config["data"] + ".gpickle"
 graph = nx.read_gpickle(data_path)
+if config['directed'] == "false":
+    graph._to_undirected()
 print("Graph loaded successfully from ", data_path)
 
 
