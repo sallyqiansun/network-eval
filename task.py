@@ -4,7 +4,7 @@ import NodeClassification
 import LinkPrediction
 
 
-def train(data_path, graph, config):
+def train(graph, config):
     if config['task'] == "NodeClassification":
         return NodeClassification.run(graph, config)
 
