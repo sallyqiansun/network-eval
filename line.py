@@ -1,197 +1,193 @@
-import networkx as nx
+import math
+import random
+
 import numpy as np
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
-import numpy as np
-import argparse
-import pickle
-import time
+import tensorflow as tf
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.layers import Embedding, Input, Lambda
+from tensorflow.python.keras.models import Model
 
-class DBLPDataLoader:
-    def __init__(self, graph_file):
-        self.g = nx.read_gpickle(graph_file)
-        self.num_of_nodes = self.g.number_of_nodes()
-        self.num_of_edges = self.g.number_of_edges()
-        self.edges_raw = self.g.edges(data=True)
-        self.nodes_raw = self.g.nodes(data=True)
-
-        self.edge_distribution = np.array([attr['weight'] for _, _, attr in self.edges_raw], dtype=np.float32)
-        self.edge_distribution /= np.sum(self.edge_distribution)
-        self.edge_sampling = AliasSampling(prob=self.edge_distribution)
-        self.node_negative_distribution = np.power(
-            np.array([self.g.degree(node, weight='weight') for node, _ in self.nodes_raw], dtype=np.float32), 0.75)
-        self.node_negative_distribution /= np.sum(self.node_negative_distribution)
-        self.node_sampling = AliasSampling(prob=self.node_negative_distribution)
-
-        self.node_index = {}
-        self.node_index_reversed = {}
-        for index, (node, _) in enumerate(self.nodes_raw):
-            self.node_index[node] = index
-            self.node_index_reversed[index] = node
-        self.edges = [(self.node_index[u], self.node_index[v]) for u, v, _ in self.edges_raw]
-
-    def fetch_batch(self, batch_size=16, K=10, edge_sampling='atlas', node_sampling='atlas'):
-        if edge_sampling == 'numpy':
-            edge_batch_index = np.random.choice(self.num_of_edges, size=batch_size, p=self.edge_distribution)
-        elif edge_sampling == 'atlas':
-            edge_batch_index = self.edge_sampling.sampling(batch_size)
-        elif edge_sampling == 'uniform':
-            edge_batch_index = np.random.randint(0, self.num_of_edges, size=batch_size)
-        u_i = []
-        u_j = []
-        label = []
-        for edge_index in edge_batch_index:
-            edge = self.edges[edge_index]
-            if self.g.__class__ == nx.Graph:
-                if np.random.rand() > 0.5:      # important: second-order proximity is for directed edge
-                    edge = (edge[1], edge[0])
-            u_i.append(edge[0])
-            u_j.append(edge[1])
-            label.append(1)
-            for i in range(K):
-                while True:
-                    if node_sampling == 'numpy':
-                        negative_node = np.random.choice(self.num_of_nodes, p=self.node_negative_distribution)
-                    elif node_sampling == 'atlas':
-                        negative_node = self.node_sampling.sampling()
-                    elif node_sampling == 'uniform':
-                        negative_node = np.random.randint(0, self.num_of_nodes)
-                    if not self.g.has_edge(self.node_index_reversed[negative_node], self.node_index_reversed[edge[0]]):
-                        break
-                u_i.append(edge[0])
-                u_j.append(negative_node)
-                label.append(-1)
-        return u_i, u_j, label
-
-    def embedding_mapping(self, embedding):
-        return {node: embedding[self.node_index[node]] for node, _ in self.nodes_raw}
+from ..alias import create_alias_table, alias_sample
+from ..utils import preprocess_nxgraph
 
 
-class AliasSampling:
-
-    # Reference: https://en.wikipedia.org/wiki/Alias_method
-
-    def __init__(self, prob):
-        self.n = len(prob)
-        self.U = np.array(prob) * self.n
-        self.K = [i for i in range(len(prob))]
-        overfull, underfull = [], []
-        for i, U_i in enumerate(self.U):
-            if U_i > 1:
-                overfull.append(i)
-            elif U_i < 1:
-                underfull.append(i)
-        while len(overfull) and len(underfull):
-            i, j = overfull.pop(), underfull.pop()
-            self.K[j] = i
-            self.U[i] = self.U[i] - (1 - self.U[j])
-            if self.U[i] > 1:
-                overfull.append(i)
-            elif self.U[i] < 1:
-                underfull.append(i)
-
-    def sampling(self, n=1):
-        x = np.random.rand(n)
-        i = np.floor(self.n * x)
-        y = self.n * x - i
-        i = i.astype(np.int32)
-        res = [i[k] if y[k] < self.U[i[k]] else self.K[i[k]] for k in range(n)]
-        if n == 1:
-            return res[0]
-        else:
-            return res
+def line_loss(y_true, y_pred):
+    return -K.mean(K.log(K.sigmoid(y_true*y_pred)))
 
 
-class LINEModel:
-    def __init__(self, args):
-        self.u_i = tf.placeholder(name='u_i', dtype=tf.int32, shape=[args.batch_size * (args.K + 1)])
-        self.u_j = tf.placeholder(name='u_j', dtype=tf.int32, shape=[args.batch_size * (args.K + 1)])
-        self.label = tf.placeholder(name='label', dtype=tf.float32, shape=[args.batch_size * (args.K + 1)])
-        self.embedding = tf.get_variable('target_embedding', [args.num_of_nodes, args.embedding_dim],
-                                         initializer=tf.random_uniform_initializer(minval=-1., maxval=1.))
-        self.u_i_embedding = tf.matmul(tf.one_hot(self.u_i, depth=args.num_of_nodes), self.embedding)
-        if args.proximity == 'first-order':
-            self.u_j_embedding = tf.matmul(tf.one_hot(self.u_j, depth=args.num_of_nodes), self.embedding)
-        elif args.proximity == 'second-order':
-            self.context_embedding = tf.get_variable('context_embedding', [args.num_of_nodes, args.embedding_dim],
-                                                     initializer=tf.random_uniform_initializer(minval=-1., maxval=1.))
-            self.u_j_embedding = tf.matmul(tf.one_hot(self.u_j, depth=args.num_of_nodes), self.context_embedding)
+def create_model(numNodes, embedding_size, order='second'):
 
-        self.inner_product = tf.reduce_sum(self.u_i_embedding * self.u_j_embedding, axis=1)
-        self.loss = -tf.reduce_mean(tf.log_sigmoid(self.label * self.inner_product))
-        self.learning_rate = tf.placeholder(name='learning_rate', dtype=tf.float32)
-        # self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
-        self.optimizer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate)
-        self.train_op = self.optimizer.minimize(self.loss)
+    v_i = Input(shape=(1,))
+    v_j = Input(shape=(1,))
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--embedding_dim', default=128)
-    parser.add_argument('--batch_size', default=128)
-    parser.add_argument('--K', default=5)
-    parser.add_argument('--proximity', default='second-order', help='first-order or second-order')
-    parser.add_argument('--learning_rate', default=0.025)
-    parser.add_argument('--mode', default='train')
-    parser.add_argument('--num_batches', type=int, default=300000)
-    parser.add_argument('--total_graph', default=True)
-    parser.add_argument('--graph_file', default='data/co-authorship_graph.pkl')
-    args = parser.parse_args()
-    if args.mode == 'train':
-        train(args)
-    elif args.mode == 'test':
-        test(args)
+    first_emb = Embedding(numNodes, embedding_size, name='first_emb')
+    second_emb = Embedding(numNodes, embedding_size, name='second_emb')
+    context_emb = Embedding(numNodes, embedding_size, name='context_emb')
+
+    v_i_emb = first_emb(v_i)
+    v_j_emb = first_emb(v_j)
+
+    v_i_emb_second = second_emb(v_i)
+    v_j_context_emb = context_emb(v_j)
+
+    first = Lambda(lambda x: tf.reduce_sum(
+        x[0]*x[1], axis=-1, keep_dims=False), name='first_order')([v_i_emb, v_j_emb])
+    second = Lambda(lambda x: tf.reduce_sum(
+        x[0]*x[1], axis=-1, keep_dims=False), name='second_order')([v_i_emb_second, v_j_context_emb])
+
+    if order == 'first':
+        output_list = [first]
+    elif order == 'second':
+        output_list = [second]
+    else:
+        output_list = [first, second]
+
+    model = Model(inputs=[v_i, v_j], outputs=output_list)
+
+    return model, {'first': first_emb, 'second': second_emb}
 
 
-def train(args):
-    data_loader = DBLPDataLoader(graph_file=args.graph_file)
-    suffix = args.proximity
-    args.num_of_nodes = data_loader.num_of_nodes
-    model = LINEModel(args)
-    with tf.Session() as sess:
-        print(args)
-        print('batches\tloss\tsampling time\ttraining_time\tdatetime')
-        tf.global_variables_initializer().run()
-        initial_embedding = sess.run(model.embedding)
-        learning_rate = args.learning_rate
-        sampling_time, training_time = 0, 0
-        for b in range(args.num_batches):
-            t1 = time.time()
-            u_i, u_j, label = data_loader.fetch_batch(batch_size=args.batch_size, K=args.K)
-            feed_dict = {model.u_i: u_i, model.u_j: u_j, model.label: label, model.learning_rate: learning_rate}
-            t2 = time.time()
-            sampling_time += t2 - t1
-            if b % 100 != 0:
-                sess.run(model.train_op, feed_dict=feed_dict)
-                training_time += time.time() - t2
-                if learning_rate > args.learning_rate * 0.0001:
-                    learning_rate = args.learning_rate * (1 - b / args.num_batches)
-                else:
-                    learning_rate = args.learning_rate * 0.0001
+class LINE:
+    def __init__(self, graph, embedding_size=8, negative_ratio=5, order='second',):
+        """
+        :param graph:
+        :param embedding_size:
+        :param negative_ratio:
+        :param order: 'first','second','all'
+        """
+        if order not in ['first', 'second', 'all']:
+            raise ValueError('mode must be fisrt,second,or all')
+
+        self.graph = graph
+        self.idx2node, self.node2idx = preprocess_nxgraph(graph)
+        self.use_alias = True
+
+        self.rep_size = embedding_size
+        self.order = order
+
+        self._embeddings = {}
+        self.negative_ratio = negative_ratio
+        self.order = order
+
+        self.node_size = graph.number_of_nodes()
+        self.edge_size = graph.number_of_edges()
+        self.samples_per_epoch = self.edge_size*(1+negative_ratio)
+
+        self._gen_sampling_table()
+        self.reset_model()
+
+    def reset_training_config(self, batch_size, times):
+        self.batch_size = batch_size
+        self.steps_per_epoch = (
+            (self.samples_per_epoch - 1) // self.batch_size + 1)*times
+
+    def reset_model(self, opt='adam'):
+
+        self.model, self.embedding_dict = create_model(
+            self.node_size, self.rep_size, self.order)
+        self.model.compile(opt, line_loss)
+        self.batch_it = self.batch_iter(self.node2idx)
+
+    def _gen_sampling_table(self):
+
+        # create sampling table for vertex
+        power = 0.75
+        numNodes = self.node_size
+        node_degree = np.zeros(numNodes)  # out degree
+        node2idx = self.node2idx
+
+        for edge in self.graph.edges():
+            node_degree[node2idx[edge[0]]
+                        ] += self.graph[edge[0]][edge[1]].get('weight', 1.0)
+
+        total_sum = sum([math.pow(node_degree[i], power)
+                         for i in range(numNodes)])
+        norm_prob = [float(math.pow(node_degree[j], power)) /
+                     total_sum for j in range(numNodes)]
+
+        self.node_accept, self.node_alias = create_alias_table(norm_prob)
+
+        # create sampling table for edge
+        numEdges = self.graph.number_of_edges()
+        total_sum = sum([self.graph[edge[0]][edge[1]].get('weight', 1.0)
+                         for edge in self.graph.edges()])
+        norm_prob = [self.graph[edge[0]][edge[1]].get('weight', 1.0) *
+                     numEdges / total_sum for edge in self.graph.edges()]
+
+        self.edge_accept, self.edge_alias = create_alias_table(norm_prob)
+
+    def batch_iter(self, node2idx):
+
+        edges = [(node2idx[x[0]], node2idx[x[1]]) for x in self.graph.edges()]
+
+        data_size = self.graph.number_of_edges()
+        shuffle_indices = np.random.permutation(np.arange(data_size))
+        # positive or negative mod
+        mod = 0
+        mod_size = 1 + self.negative_ratio
+        h = []
+        t = []
+        sign = 0
+        count = 0
+        start_index = 0
+        end_index = min(start_index + self.batch_size, data_size)
+        while True:
+            if mod == 0:
+
+                h = []
+                t = []
+                for i in range(start_index, end_index):
+                    if random.random() >= self.edge_accept[shuffle_indices[i]]:
+                        shuffle_indices[i] = self.edge_alias[shuffle_indices[i]]
+                    cur_h = edges[shuffle_indices[i]][0]
+                    cur_t = edges[shuffle_indices[i]][1]
+                    h.append(cur_h)
+                    t.append(cur_t)
+                sign = np.ones(len(h))
             else:
-                loss = sess.run(model.loss, feed_dict=feed_dict)
-                print('%d\t%f\t%0.2f\t%0.2f\t%s' % (b, loss, sampling_time, training_time,
-                                                    time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-                sampling_time, training_time = 0, 0
-            if b % 1000 == 0 or b == (args.num_batches - 1):
-                embedding = sess.run(model.embedding)
-                normalized_embedding = embedding / np.linalg.norm(embedding, axis=1, keepdims=True)
-                pickle.dump(data_loader.embedding_mapping(normalized_embedding),
-                            open('embedding/line-%s.pkl' % suffix, 'wb'))
+                sign = np.ones(len(h))*-1
+                t = []
+                for i in range(len(h)):
 
+                    t.append(alias_sample(
+                        self.node_accept, self.node_alias))
 
-def read_graph_write_pkl(input_file, output_file):
-    G = nx.read_edgelist(input_file, nodetype=int, data=(('weight', float),))
-    for edge in G.edges():
-        G[edge[0]][edge[1]]['weight'] = 1
-    nx.write_gpickle(G, "data/karate.edgelist")
+            if self.order == 'all':
+                yield ([np.array(h), np.array(t)], [sign, sign])
+            else:
+                yield ([np.array(h), np.array(t)], [sign])
+            mod += 1
+            mod %= mod_size
+            if mod == 0:
+                start_index = end_index
+                end_index = min(start_index + self.batch_size, data_size)
 
+            if start_index >= data_size:
+                count += 1
+                mod = 0
+                h = []
+                shuffle_indices = np.random.permutation(np.arange(data_size))
+                start_index = 0
+                end_index = min(start_index + self.batch_size, data_size)
 
-def test(args):
-    pass
+    def get_embeddings(self,):
+        self._embeddings = {}
+        if self.order == 'first':
+            embeddings = self.embedding_dict['first'].get_weights()[0]
+        elif self.order == 'second':
+            embeddings = self.embedding_dict['second'].get_weights()[0]
+        else:
+            embeddings = np.hstack((self.embedding_dict['first'].get_weights()[
+                                   0], self.embedding_dict['second'].get_weights()[0]))
+        idx2node = self.idx2node
+        for i, embedding in enumerate(embeddings):
+            self._embeddings[idx2node[i]] = embedding
 
-if __name__ == '__main__':
-    read_graph_write_pkl('data/karate.edgelist', 'converted')
-    main()
-    # with open('embedding/embedding-line-second-order.pkl', 'rb') as pickle_file:
-    #     content = pickle.load(pickle_file)
-    #     print(content)
+        return self._embeddings
+
+    def train(self, batch_size=1024, epochs=1, initial_epoch=0, verbose=1, times=1):
+        self.reset_training_config(batch_size, times)
+        hist = self.model.fit_generator(self.batch_it, epochs=epochs, initial_epoch=initial_epoch, steps_per_epoch=self.steps_per_epoch,
+                                        verbose=verbose)
+
+        return hist

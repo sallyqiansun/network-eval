@@ -40,7 +40,7 @@ def run(graph, config):
     y = []
     i = 0
     for node in list(cluster_membership.keys()):
-        node_ind = str(int(node) + 1)
+        node_ind = str(node)
         X[i][:] = embeddings[node_ind]
         y.append(cluster_membership[node])
         i += 1

@@ -26,6 +26,7 @@ def visualize(config):
     for i in range(len(emb)):
         embeddings[i, :] = emb[l_emb[i]]
 
+    #TODO: reverse
     X_pca = PCA(n_components = 2).fit_transform(embeddings)
     kmeans = KMeans()
     kmeans.fit(X_pca)

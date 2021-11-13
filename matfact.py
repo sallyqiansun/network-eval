@@ -15,8 +15,9 @@ def run(config, G):
     f = open(config['emb-path'], "w")
     f.write("{} {}\n".format(emb.shape[0], emb.shape[1]))
     for i in ind:
-        f.write("{} ".format(i+1))
-        for e in emb[i-1]:
-            f.write("{} ".format(e))
-        f.write("\n")
+        if i < 2706:
+            f.write("{} ".format(i+1))
+            for e in emb[i]:
+                f.write("{} ".format(e))
+            f.write("\n")
     f.close()
