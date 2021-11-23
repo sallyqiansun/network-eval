@@ -32,18 +32,7 @@ def run(graph, config):
     f.close()
 
     # 2. Get labels from gpickle graph file
-    model = LabelPropagation()
-    model.fit(nx.relabel.convert_node_labels_to_integers(graph, first_label=0, ordering='default'))
-    cluster_membership = model.get_memberships()
-
-    X = np.zeros((shape_0, shape_1))
-    y = []
-    i = 0
-    for node in list(cluster_membership.keys()):
-        node_ind = str(node)
-        X[i][:] = embeddings[node_ind]
-        y.append(cluster_membership[node])
-        i += 1
+    #TODO
 
 
     for train_pct in config['train_percent']:

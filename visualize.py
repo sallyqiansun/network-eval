@@ -2,11 +2,17 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import numpy as np
-
-
+from sklearn.manifold import TSNE
+import networkx as nx
 
 def visualize(config):
     path = config['emb-path']
+    data_path = "data/" + config["data"] + ".gpickle"
+    G = nx.read_gpickle(data_path)
+
+    node_targets = nx.get_node_attributes(G, "label")
+    node_labels = dict()
+
     with open(path) as f:
         f.readline().split()
         emb = {}
@@ -14,6 +20,7 @@ def visualize(config):
         for line in f:
             l = line.strip().split()
             node = l[0]
+            node_labels[node] = node_targets[int(node)]
             embedding = l[1:]
             embedding = [float(i) for i in embedding]
             embedding = embedding / np.linalg.norm(embedding)
@@ -26,21 +33,24 @@ def visualize(config):
     for i in range(len(emb)):
         embeddings[i, :] = emb[l_emb[i]]
 
-    #TODO: reverse
-    X_pca = PCA(n_components = 2).fit_transform(embeddings)
-    kmeans = KMeans()
-    kmeans.fit(X_pca)
-    labels = kmeans.labels_
-    plt.figure(figsize=(10, 10))
-    plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, s=100, cmap="prism", edgecolor="grey")
-    for i, k in enumerate(list(emb.keys())):
-        plt.annotate('', X_pca[i], horizontalalignment='center', verticalalignment='center',)
+    tsne = TSNE(n_components=2)
+    node_embeddings_2d = tsne.fit_transform(embeddings)
 
-    plt.xlabel("x1")
-    plt.ylabel("x2")
-    plt.title("PCA and K-means")
-    plt.grid()
-    plt.savefig(config['fig-path'])
+
+    labels = np.unique(list(nx.get_node_attributes(G, "label").values()))
+    label_map = {l: i for i, l in enumerate(labels)}
+    node_targets = nx.get_node_attributes(G, "label")
+    node_colours = [label_map[target] for target in node_targets.values()]
+
+    plt.figure(figsize=(10, 8))
+    plt.scatter(
+        node_embeddings_2d[:, 0],
+        node_embeddings_2d[:, 1],
+        c=node_colours,
+        cmap="jet",
+        alpha=0.7,
+    )
+    plt.savefig(config["fig-path"])
 
 
 # import json
