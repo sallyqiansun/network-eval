@@ -10,13 +10,14 @@ def visualize(config):
     data_path = "data/" + config["data"] + ".gpickle"
     G = nx.read_gpickle(data_path)
 
-    node_targets = nx.get_node_attributes(G, "label")
     node_labels = dict()
+    node_targets = nx.get_node_attributes(G, "label")
+    labels = np.unique(list(node_targets.values()))
+    label_map = {l: i for i, l in enumerate(labels)}
 
     with open(path) as f:
         f.readline().split()
         emb = {}
-        i = 0
         for line in f:
             l = line.strip().split()
             node = l[0]
@@ -29,18 +30,15 @@ def visualize(config):
     f.close()
 
     embeddings = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
-    l_emb = list(emb)
-    for i in range(len(emb)):
-        embeddings[i, :] = emb[l_emb[i]]
+    node_colours = []
+    for i, k in enumerate(emb.keys()):
+        embeddings[i, :] = emb[k]
+        node_colours.append(label_map[node_targets[int(k)]])
 
     tsne = TSNE(n_components=2)
     node_embeddings_2d = tsne.fit_transform(embeddings)
 
 
-    labels = np.unique(list(nx.get_node_attributes(G, "label").values()))
-    label_map = {l: i for i, l in enumerate(labels)}
-    node_targets = nx.get_node_attributes(G, "label")
-    node_colours = [label_map[target] for target in node_targets.values()]
 
     plt.figure(figsize=(10, 8))
     plt.scatter(

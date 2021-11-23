@@ -9,34 +9,41 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import networkx as nx
 
 def run(graph, config):
-    all_results = defaultdict(list)
-    embeddings_file = config['emb-path']
-    A = nx.adjacency_matrix(graph)
+    data_path = "data/" + config["data"] + ".gpickle"
+    G = nx.read_gpickle(data_path)
 
-    shape_1 = 0
-    # reference for implementation of reading from embeddings_file: https://github.com/xiangyue9607/BioNEV
+    all_results = {}
+    embeddings_file = config['emb-path']
+
+    node_labels = {}
+    node_targets = nx.get_node_attributes(G, "label")
+    labels = np.unique(list(node_targets.values()))
+    label_map = {l: i for i, l in enumerate(labels)}
+
     with open(embeddings_file) as f:
         f.readline().split()
-        embeddings = {}
-        shape_0 = 0
+        emb = {}
         for line in f:
             l = line.strip().split()
             node = l[0]
+            node_labels[node] = node_targets[int(node)]
             embedding = l[1:]
             embedding = [float(i) for i in embedding]
             embedding = embedding / np.linalg.norm(embedding)
             np.nan_to_num(embedding, nan=0)
-            embeddings[node] = list(embedding)
-            shape_1 = len(embeddings[node])
-            shape_0 += 1
+            emb[node] = list(embedding)
     f.close()
 
-    # 2. Get labels from gpickle graph file
-    #TODO
+    X = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
+    y = np.empty(shape=len(emb))
 
+    for i, k in enumerate(emb.keys()):
+        X[i, :] = emb[k]
+        y[i] = label_map[node_targets[int(k)]]
 
     for train_pct in config['train_percent']:
         print("training percentage: ", train_pct)
+        all_results[train_pct] = {}
         test_pct = 1 - float(train_pct)
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = float(train_pct), test_size=test_pct, random_state=int(config['seed']))
         lr = LogisticRegression(random_state=int(config['seed'])).fit(X_train, y_train)
@@ -51,7 +58,11 @@ def run(graph, config):
         print('zero-one loss: {:.4f}'.format(zero_one))
         print()
 
-        all_results[train_pct].extend([f1_micro, f1_macro, acc, zero_one])
+        all_results[train_pct]["f1_micro"] = f1_micro
+        all_results[train_pct]["f1_macro"] = f1_macro
+        all_results[train_pct]["acc"] = acc
+        all_results[train_pct]["zero_one_loss"] = zero_one
+
 
     return all_results
 
