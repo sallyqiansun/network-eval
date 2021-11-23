@@ -18,10 +18,10 @@ config = json.load(config_file)
 
 
 # load data
-data_path = "examples/" + config["data"] + ".gpickle"
+data_path = "data/" + config["data"] + ".gpickle"
 graph = nx.read_gpickle(data_path)
 if config['directed'] == "false":
-    graph._to_undirected()
+    graph.to_undirected()
 print("Graph loaded successfully from ", data_path)
 
 
@@ -30,7 +30,7 @@ fit.model(config, graph)
 print("Learning finished for model", config['method'])
 
 # task
-result = task.train(data_path, graph, config)
+result = task.train(graph, config)
 print("Completed training on task", config["task"])
 
 #visualization

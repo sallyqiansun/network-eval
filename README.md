@@ -33,7 +33,7 @@ config = {
         0.5,
         0.8
     ],
-    "dimensions": 10,
+    "dimensions": 128,
     "iter": 1,
     "seed": 1,
     "p": 1,
@@ -44,6 +44,11 @@ config = {
     "num-shuffles": 1,
     "order": 10,
     "edge-feature": "hadamard",
+    "K": 5, 
+    "batch-size": 128, 
+    "batch": 300,
+    "proximity": "first-order", 
+    "learning-rate": 0.05, 
     "fig-path": "plots/karate-n2v.png"
 }
 ```
@@ -111,6 +116,10 @@ config = {
 
 # Datasets
 - Cora
+  ```
+  data/cora
+  (source: https://deepai.org/dataset/cora access-date: 11/13/2021)
+  ```
 
 - Reddit
 

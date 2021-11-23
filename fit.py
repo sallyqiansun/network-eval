@@ -2,7 +2,7 @@
 
 import node2vec
 import grarep
-# import line
+import line
 import matfact
 
 def model(config, G):
@@ -15,8 +15,8 @@ def model(config, G):
     elif config["method"] == "matfact":
         matfact.run(config, G)
 
-    # elif config["method"] == "line":
-    #     line.run(config, G)
+    elif config["method"] == "line":
+        line.run(config, G)
 
     else:
         raise Exception("Method not supported. ")

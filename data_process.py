@@ -4,10 +4,11 @@ from scipy.sparse import issparse
 from networkx import Graph
 import pandas as pd
 import argparse
+import csv
 
 def save_graph(format, data, data_path, directed=False, weighted=False, variable_name="network", label_name="group"):
     G = read_graph(format, data_path, directed, weighted, variable_name, label_name)
-    pickle_path = "examples/" + data + ".gpickle"
+    pickle_path = "data/" + data + ".gpickle"
     nx.write_gpickle(G, pickle_path)
     print("Data saved to", pickle_path)
 
@@ -84,5 +85,10 @@ def read_graph_csv(input, directed, weighted):
 
 
 # save_graph('edgelist', 'karate', 'examples/karate.edgelist', directed=False, weighted=False)
+data_path = "data/" + 'cora' + ".gpickle"
+G = nx.read_gpickle(data_path)
+print(G.edges())
+# data= pd.read_csv('data/cora/group-edges.csv', header=None)
+# print(data)
 
 
