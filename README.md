@@ -21,13 +21,13 @@ matplotlib~=3.4.3
 An example config file: 
 ```yaml
 config = {
-    "data": "karate",
+    "data": "cora",
     "weighted": "false",
     "directed": "false",
     "method": "node2vec",
     "task": "NodeClassification",
-    "emb-path": "embedding/karate-n2v.emb",
-    "eval-path": "evaluation/karate-n2v.txt",
+    "emb-path": "embedding/cora-n2v.emb",
+    "eval-path": "evaluation/cora-n2v.txt",
     "train_percent": [
         0.1,
         0.5,
@@ -49,7 +49,7 @@ config = {
     "batch": 300,
     "proximity": "first-order", 
     "learning-rate": 0.05, 
-    "fig-path": "plots/karate-n2v.png"
+    "fig-path": "plots/cora-n2v.png"
 }
 ```
 
