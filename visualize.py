@@ -5,49 +5,32 @@ import numpy as np
 from sklearn.manifold import TSNE
 import networkx as nx
 
-def visualize(config):
-    path = config['emb-path']
-    data_path = "data/" + config["data"] + ".gpickle"
-    G = nx.read_gpickle(data_path)
+def visualize(result, config):
+    X = result[1]
+    predicted_on_all = result[2]
+    true_label_on_all = result[3]
 
-    node_labels = dict()
-    node_targets = nx.get_node_attributes(G, "label")
-    labels = np.unique(list(node_targets.values()))
-    label_map = {l: i for i, l in enumerate(labels)}
-
-    with open(path) as f:
-        f.readline().split()
-        emb = {}
-        for line in f:
-            l = line.strip().split()
-            node = l[0]
-            node_labels[node] = node_targets[int(node)]
-            embedding = l[1:]
-            embedding = [float(i) for i in embedding]
-            embedding = embedding / np.linalg.norm(embedding)
-            np.nan_to_num(embedding, nan=0)
-            emb[node] = list(embedding)
-    f.close()
-
-    embeddings = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
-    node_colours = []
-    for i, k in enumerate(emb.keys()):
-        embeddings[i, :] = emb[k]
-        node_colours.append(label_map[node_targets[int(k)]])
-
-    tsne = TSNE(n_components=2)
-    node_embeddings_2d = tsne.fit_transform(embeddings)
-
-
-
-    plt.figure(figsize=(10, 8))
+    plt.rcParams["figure.figsize"] = (40,10)
+    plt.subplot(1, 2, 1)
     plt.scatter(
-        node_embeddings_2d[:, 0],
-        node_embeddings_2d[:, 1],
-        c=node_colours,
+        X[:, 0],
+        X[:, 1],
+        c=true_label_on_all,
         cmap="jet",
         alpha=0.7,
     )
+    plt.title('{} embedding with true labels'.format(config["method"]))
+
+    plt.subplot(1, 2, 2)
+    plt.scatter(
+        X[:, 0],
+        X[:, 1],
+        c=predicted_on_all,
+        cmap="jet",
+        alpha=0.7,
+    )
+    plt.title('{} embedding with predicted labels'.format(config["method"]))
+
     plt.savefig(config["fig-path"])
 
 

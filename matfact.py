@@ -21,3 +21,4 @@ def run(config, G):
                 f.write("{} ".format(e))
             f.write("\n")
     f.close()
+    print("Embedding saved to {}.".format(config['emb-path']))

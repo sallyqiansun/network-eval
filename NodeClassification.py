@@ -34,6 +34,8 @@ def run(graph, config):
             emb[node] = list(embedding)
     f.close()
 
+    print("Embedding loaded from {}.".format(config['emb-path']))
+
     X = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
     y = np.empty(shape=len(emb))
 
@@ -63,7 +65,9 @@ def run(graph, config):
         all_results[train_pct]["acc"] = acc
         all_results[train_pct]["zero_one_loss"] = zero_one
 
+    predicted_on_all = lr.predict(X)
+    true_label_on_all = y
 
-    return all_results
+    return all_results, X, predicted_on_all, true_label_on_all
 
 

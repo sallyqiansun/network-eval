@@ -92,6 +92,7 @@ def run(graph, config):
             np.nan_to_num(embedding, nan=0)
             emb[node] = list(embedding)
     f.close()
+    print("Embedding loaded from {}.".format(config['emb-path']))
 
     # # 2. Set positive and negative training sets
     for train_percent in config['train_percent']:
@@ -126,10 +127,12 @@ def run(graph, config):
         clf.fit(train_feat, train_labels)
         auc_test = roc_auc_score(clf.predict(test_feat), test_labels)
         print('auc: {:.4f}'.format(auc_test))
-        print()
         all_results[train_percent].append(auc_test)
 
-    return all_results
+    all_feat = train_feat + test_feat
+    predicted_on_all = clf.predict(all_feat)
+    true_label_on_all = train_labels + test_labels
+    return all_results, all_feat, predicted_on_all, true_label_on_all
 
 
 def get_features(links, emb, method):

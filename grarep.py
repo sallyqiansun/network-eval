@@ -39,7 +39,6 @@ def optimize(A, A_hat, config):
     """
     Learning an embedding.
     """
-    print("\nOptimization started.\n")
     embeddings = []
     for i in (range(config['order'])):
         print (str(i+1), '/', str(config['order']))
@@ -52,7 +51,6 @@ def optimize(A, A_hat, config):
         svd.fit(target_matrix)
         embedding = svd.transform(target_matrix)
         embeddings.append(embedding)
-    print("\nOptimization completed.\n")
     return embeddings
 
 def save_embedding(config, A, A_hat):
@@ -70,7 +68,7 @@ def save_embedding(config, A, A_hat):
             f.write("{} ".format(e))
         f.write("\n")
     f.close()
-    print("\nEmbedding saved to "+ config['emb-path'])
+    print("Embedding saved to {}.".format(config['emb-path']))
 
 
 def run(config, G):

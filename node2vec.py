@@ -155,11 +155,9 @@ def run(config, G, workers=8):
 		alias_nodes = preprocess_transition_probs(G, config)[0]
 		alias_edges = preprocess_transition_probs(G, config)[1]
 
-		print("Walking...")
 		walks = simulate_walks(G, config, alias_nodes, alias_edges)
 		walks = [list(map(str, walk)) for walk in walks]
 
-		print("Training...")
 		model = Word2Vec(walks, window=config['window-size'], min_count=0, sg=1, workers=workers, epochs=config['iter'])
 
 	elif config['method'] == "deepwalk":
@@ -168,11 +166,9 @@ def run(config, G, workers=8):
 		else:
 			alias_nodes, alias_edges = preprocess_transition_probs(G, config)
 
-			print("Walking...")
 			walks = simulate_walks(G, config, alias_nodes, alias_edges)
 			walks = [list(map(str, walk)) for walk in walks]
 
-			print("Training...")
 			model = Word2Vec(walks, window=config['window-size'], min_count=0, sg=1, workers=workers, epochs=config['iter'])
 
 	else:

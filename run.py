@@ -34,7 +34,7 @@ result = task.train(graph, config)
 print("Completed training on task", config["task"])
 
 #visualization
-visualize.visualize(config)
+visualize.visualize(result, config)
 
 # evaluate
 evaluate.save(result, config)

@@ -53,7 +53,13 @@ config = {
 }
 ```
 
-- To convert graph data formats, run `data_process.py`:
+- The Jupyter Notebook demo for the run-through is in:
+```
+    run_through.ipynb
+```
+
+# Data Preparation
+To convert graph data formats, run `data_process.py`:
 1. `read_graph`: read graph in the format of edgelist/adglist/matfile/csv
 2. `save_graph`: save graph to pickle format
 
@@ -74,13 +80,13 @@ config = {
 ### 1. Transductive Methods
 - Matrix Factorization 
 
-- DeepWalk (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
+- DeepWalk (reference: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
 
-- Node2Vec (source: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
+- Node2Vec (reference: https://github.com/aditya-grover/node2vec access-date 7/31/2021)
 
-- GraRep (source: https://github.com/benedekrozemberczki/GraRep access-date 9/8/2021)
+- GraRep (reference: https://github.com/benedekrozemberczki/GraRep access-date 9/8/2021)
 
-- LINE (source: https://github.com/snowkylin/line access-date 9/29/2021)
+- LINE (reference: https://github.com/snowkylin/line access-date 9/29/2021)
 
 ### 2. Inductive Methods
 - GraphSAGE
@@ -93,8 +99,10 @@ config = {
 - node classification (supervised)
 
     - zero/one loss, FP/FN rates, macro F1 scores, cross entropy loss
-    
-    (code source: https://github.com/phanein/deepwalk access-date: 7/31/2021)
+```
+    NodeClassification.py
+    (reference: https://github.com/phanein/deepwalk access-date: 7/31/2021)
+```
 
 - community detection (unsupervised)
 
@@ -103,8 +111,10 @@ config = {
 - link prediction
 
     - zero/one loss, cross entropy loss
-
-    (code source: https://github.com/lucashu1/link-prediction DOI: 10.5281/zenodo.1408472 access-date: 9/16/2021)
+```
+    LinkPrediction.py
+    (reference: https://github.com/lucashu1/link-prediction DOI: 10.5281/zenodo.1408472 access-date: 9/16/2021)
+```
 
 - recommendation
     
@@ -113,13 +123,17 @@ config = {
 ### 3. Inference of Generative Models
 
 
+# Visualization
+```
+    visualize.py
+```
 
 # Datasets
 - Cora
-  ```
+```
   data/cora
-  (source: https://deepai.org/dataset/cora access-date: 11/13/2021)
-  ```
+  (source: https://graphsandnetworks.com/the-cora-dataset/ access-date: 11/13/2021)
+```
 
 - Reddit
 
