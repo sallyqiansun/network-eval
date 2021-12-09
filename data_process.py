@@ -21,7 +21,7 @@ def read_graph(format, data_path, directed=False, weighted=False, variable_name=
     elif format == "adjlist":
         G = read_graph_adjlist(data_path, directed, weighted)
     elif format == "mat":
-        G = read_graph_mat(data_path, directed, weighted, variable_name, label_name)
+        G = read_graph_mat(data_path, directed, weighted, variable_name)
     elif format == "csv":
         G = read_graph_csv(data_path, directed, weighted)
     else:
@@ -85,9 +85,9 @@ def read_graph_csv(input, directed, weighted):
 
 
 # save_graph('edgelist', 'karate', 'examples/karate.edgelist', directed=False, weighted=False)
-data_path = "data/" + 'cora' + ".gpickle"
-G = nx.read_gpickle(data_path)
-print(G.edges())
+# data_path = "data/" + 'ppi' + ".gpickle"
+# G = nx.read_gpickle(data_path)
+# print(G.edges())
 # data= pd.read_csv('data/cora/group-edges.csv', header=None)
 # print(data)
 

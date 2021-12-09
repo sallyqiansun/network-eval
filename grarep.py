@@ -53,17 +53,26 @@ def optimize(A, A_hat, config):
         embeddings.append(embedding)
     return embeddings
 
-def save_embedding(config, A, A_hat):
+def save_embedding(config, A, A_hat, G):
     """
     Saving the embedding.
     """
+    nodes = sorted(G.nodes())
+    # save original node_ids using dictionary
+    node_dict = {}
+    i = 0
+    while i < len(nodes):
+        node_dict[i] = nodes[i]
+        i += 1
+
     embeddings = optimize(A, A_hat, config)
     emb = np.concatenate(embeddings, axis=1)
 
     f = open(config['emb-path'], "w")
     f.write("{} {}\n".format(emb.shape[0], emb.shape[1]))
-    for i in range(emb.shape[0]):
-        f.write("{} ".format(i + 1))
+    emb = emb.tolist()
+    for i in range(len(emb)):
+        f.write("{} ".format(node_dict[i]))
         for e in emb[i]:
             f.write("{} ".format(e))
         f.write("\n")
@@ -74,4 +83,4 @@ def save_embedding(config, A, A_hat):
 def run(config, G):
     A = nx.adjacency_matrix(G).todense()
     A_hat = _setup_base_target_matrix(A)
-    save_embedding(config, A, A_hat)
+    save_embedding(config, A, A_hat, G)

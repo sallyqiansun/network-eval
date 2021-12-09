@@ -58,8 +58,12 @@ config = {
     run_through.ipynb
 ```
 
-# Data Preparation
-To convert graph data formats, run `data_process.py`:
+# Data
+Details of the datasets in the `/data` folder can be found in `datasets.md`.
+
+We provide the code for data conversion to `.gpickle` format in `data_process.ipynb`. 
+
+Processing of external datasets is supported by `data_process.py`:
 1. `read_graph`: read graph in the format of edgelist/adglist/matfile/csv
 2. `save_graph`: save graph to pickle format
 
@@ -125,21 +129,7 @@ To convert graph data formats, run `data_process.py`:
 
 # Visualization
 ```
-    visualize.py
+visualize.py
 ```
-
-# Datasets
-- Cora
-```
-  data/cora
-  (source: https://graphsandnetworks.com/the-cora-dataset/ access-date: 11/13/2021)
-```
-
-- Reddit
-
-- Blogcatalog
-
-- Karate
-
 
 

@@ -26,7 +26,10 @@ def run(graph, config):
         for line in f:
             l = line.strip().split()
             node = l[0]
-            node_labels[node] = node_targets[int(node)]
+            if node in node_targets.keys():
+                node_labels[node] = node_targets[node]
+            else:
+                continue
             embedding = l[1:]
             embedding = [float(i) for i in embedding]
             embedding = embedding / np.linalg.norm(embedding)
@@ -41,7 +44,7 @@ def run(graph, config):
 
     for i, k in enumerate(emb.keys()):
         X[i, :] = emb[k]
-        y[i] = label_map[node_targets[int(k)]]
+        y[i] = label_map[node_targets[k]]
 
     for train_pct in config['train_percent']:
         print("training percentage: ", train_pct)

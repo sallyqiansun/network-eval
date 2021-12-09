@@ -4,6 +4,7 @@ import node2vec
 import grarep
 import line
 import matfact
+import sbm
 
 def model(config, G):
     if config['method'] == "node2vec" or config['method'] == "deepwalk":
@@ -17,6 +18,9 @@ def model(config, G):
 
     elif config["method"] == "line":
         line.run(config, G)
+
+    elif config["method"] == "sbm":
+        sbm.run(config, G)
 
     else:
         raise Exception("Method not supported. ")
