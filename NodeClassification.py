@@ -13,63 +13,75 @@ def run(graph, config):
     G = nx.read_gpickle(data_path)
 
     all_results = {}
-    embeddings_file = config['emb-path']
-
     node_labels = {}
     node_targets = nx.get_node_attributes(G, "label")
     labels = np.unique(list(node_targets.values()))
     label_map = {l: i for i, l in enumerate(labels)}
+    embeddings_file = config['emb-path']
 
-    with open(embeddings_file) as f:
-        f.readline().split()
-        emb = {}
-        for line in f:
-            l = line.strip().split()
-            node = l[0]
-            if node in node_targets.keys():
-                node_labels[node] = node_targets[node]
-            else:
-                continue
-            embedding = l[1:]
-            embedding = [float(i) for i in embedding]
-            embedding = embedding / np.linalg.norm(embedding)
-            np.nan_to_num(embedding, nan=0)
-            emb[node] = list(embedding)
-    f.close()
+    if config['method'] in ['sbm', 'mmsbm']:
+        with open(embeddings_file) as f:
+            f.readline().split()
+            predicted = {}
+            for line in f:
+                l = line.strip().split()
+                nod = l[0]
+                lab = l[1]
+                predicted[nod] = lab
 
-    print("Embedding loaded from {}.".format(config['emb-path']))
+        return None, None, predicted, labels
 
-    X = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
-    y = np.empty(shape=len(emb))
+    else:
+        with open(embeddings_file) as f:
+            f.readline().split()
+            emb = {}
+            for line in f:
+                l = line.strip().split()
+                node = l[0]
+                if node in node_targets.keys():
+                    node_labels[node] = node_targets[node]
+                else:
+                    continue
+                embedding = l[1:]
+                embedding = [float(i) for i in embedding]
+                embedding = embedding / np.linalg.norm(embedding)
+                np.nan_to_num(embedding, nan=0)
+                emb[node] = list(embedding)
+        f.close()
 
-    for i, k in enumerate(emb.keys()):
-        X[i, :] = emb[k]
-        y[i] = label_map[node_targets[k]]
+        print("Embedding loaded from {}.".format(config['emb-path']))
 
-    for train_pct in config['train_percent']:
-        print("training percentage: ", train_pct)
-        all_results[train_pct] = {}
-        test_pct = 1 - float(train_pct)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = float(train_pct), test_size=test_pct, random_state=int(config['seed']))
-        lr = LogisticRegression(random_state=int(config['seed'])).fit(X_train, y_train)
-        y_hat = lr.predict(X_test)
-        f1_micro = f1_score(y_test, y_hat, average="micro")
-        f1_macro = f1_score(y_test, y_hat, average="macro")
-        acc = accuracy_score(y_test, y_hat)
-        zero_one = zero_one_loss(y_test, y_hat)
-        print('micro F1: {:.4f}'.format(f1_micro))
-        print('macro F1: {:.4f}'.format(f1_macro))
-        print('accuracy score: {:.4f}'.format(acc))
-        print('zero-one loss: {:.4f}'.format(zero_one))
-        print()
+        X = np.empty(shape=(len(emb), len(emb[list(emb.keys())[0]])))
+        y = np.empty(shape=len(emb))
 
-        all_results[train_pct]["f1_micro"] = f1_micro
-        all_results[train_pct]["f1_macro"] = f1_macro
-        all_results[train_pct]["acc"] = acc
-        all_results[train_pct]["zero_one_loss"] = zero_one
+        for i, k in enumerate(emb.keys()):
+            X[i, :] = emb[k]
+            y[i] = label_map[node_targets[k]]
 
-    predicted_on_all = lr.predict(X)
-    true_label_on_all = y
+        for train_pct in config['train_percent']:
+            print("training percentage: ", train_pct)
+            all_results[train_pct] = {}
+            test_pct = 1 - float(train_pct)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = float(train_pct), test_size=test_pct, random_state=int(config['seed']))
+            lr = LogisticRegression(random_state=int(config['seed'])).fit(X_train, y_train)
+            y_hat = lr.predict(X_test)
+            f1_micro = f1_score(y_test, y_hat, average="micro")
+            f1_macro = f1_score(y_test, y_hat, average="macro")
+            acc = accuracy_score(y_test, y_hat)
+            zero_one = zero_one_loss(y_test, y_hat)
+            print('micro F1: {:.4f}'.format(f1_micro))
+            print('macro F1: {:.4f}'.format(f1_macro))
+            print('accuracy score: {:.4f}'.format(acc))
+            print('zero-one loss: {:.4f}'.format(zero_one))
+            print()
+
+            all_results[train_pct]["f1_micro"] = f1_micro
+            all_results[train_pct]["f1_macro"] = f1_macro
+            all_results[train_pct]["acc"] = acc
+            all_results[train_pct]["zero_one_loss"] = zero_one
+
+        predicted_on_all = lr.predict(X)
+        true_label_on_all = y
 
     return all_results, X, predicted_on_all, true_label_on_all
 
