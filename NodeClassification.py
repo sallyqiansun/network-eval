@@ -8,9 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MultiLabelBinarizer
 import networkx as nx
 
-def run(graph, config):
-    data_path = "data/" + config["data"] + ".gpickle"
-    G = nx.read_gpickle(data_path)
+def run(G, config):
 
     all_results = {}
     node_labels = {}
@@ -37,7 +35,7 @@ def run(graph, config):
             emb = {}
             for line in f:
                 l = line.strip().split()
-                node = l[0]
+                node = int(l[0])
                 if node in node_targets.keys():
                     node_labels[node] = node_targets[node]
                 else:
@@ -85,4 +83,9 @@ def run(graph, config):
 
     return all_results, X, predicted_on_all, true_label_on_all
 
-
+import json
+config_file = open("config.json", "r")
+config = json.load(config_file)
+data_path = "data/" + config["data"] + ".gpickle"
+graph = nx.read_gpickle(data_path)
+run(graph, config)
