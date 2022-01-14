@@ -12,6 +12,8 @@ import numpy as np
 
 import networkx as nx
 
+# reference: https://github.com/twjiang/graphSAGE-pytorch
+
 class Classification(nn.Module):
 
     def __init__(self, emb_size, num_classes):
@@ -406,9 +408,9 @@ def run(G, config):
 
 
 
-import json
-config_file = open('config.json', "r")
-config = json.load(config_file)
-data_path = "data/" + config["data"] + ".gpickle"
-graph = nx.read_gpickle(data_path)
-run(graph, config)
+# import json
+# config_file = open('config.json', "r")
+# config = json.load(config_file)
+# data_path = "data/" + config["data"] + ".gpickle"
+# graph = nx.read_gpickle(data_path)
+# run(graph, config)

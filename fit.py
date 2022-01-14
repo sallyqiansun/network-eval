@@ -5,6 +5,7 @@ import grarep
 import line
 import matfact
 import sbm
+import graphsage
 
 def model(config, G):
     if config['method'] == "node2vec" or config['method'] == "deepwalk":
@@ -21,6 +22,9 @@ def model(config, G):
 
     elif config["method"] == "sbm":
         sbm.run(config, G)
+
+    elif config["method"] == "graphsage":
+        graphsage.run(config, G)
 
     else:
         raise Exception("Method not supported. ")

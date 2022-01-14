@@ -95,7 +95,7 @@ Processing of external datasets is supported by `data_process.py`:
 - LINE (reference: https://github.com/snowkylin/line access-date 9/29/2021)
 
 ### 2. Inductive Methods
-- GraphSAGE
+- GraphSAGE (reference: https://github.com/twjiang/graphSAGE-pytorch)
 
 - DGI
 
