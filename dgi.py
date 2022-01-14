@@ -53,21 +53,21 @@ class DGI(nn.Module):
 
         self.disc = Discriminator(n_h)
 
-    def forward(self, seq1, seq2, adj, sparse, msk, samp_bias1, samp_bias2):
-        h_1 = self.gcn(seq1, adj, sparse)
+    def forward(self, seq1, seq2, adj, msk, samp_bias1, samp_bias2):
+        h_1 = self.gcn(seq1, adj)
 
         c = self.read(h_1, msk)
         c = self.sigm(c)
 
-        h_2 = self.gcn(seq2, adj, sparse)
+        h_2 = self.gcn(seq2, adj)
 
         ret = self.disc(c, h_1, h_2, samp_bias1, samp_bias2)
 
         return ret
 
     # Detach the return variables
-    def embed(self, seq, adj, sparse, msk):
-        h_1 = self.gcn(seq, adj, sparse)
+    def embed(self, seq, adj, msk):
+        h_1 = self.gcn(seq, adj)
         c = self.read(h_1, msk)
 
         return h_1.detach(), c.detach()
@@ -95,12 +95,9 @@ class GCN(nn.Module):
                 m.bias.data.fill_(0.0)
 
     # Shape of seq: (batch, nodes, features)
-    def forward(self, seq, adj, sparse=False):
+    def forward(self, seq, adj):
         seq_fts = self.fc(seq)
-        if sparse:
-            out = torch.unsqueeze(torch.spmm(adj, torch.squeeze(seq_fts, 0)), 0)
-        else:
-            out = torch.bmm(adj, seq_fts)
+        out = torch.bmm(adj, seq_fts)
         if self.bias is not None:
             out += self.bias
 
@@ -141,15 +138,6 @@ def preprocess_features(features):
     features = r_mat_inv.dot(features)
     return features.todense(), sparse_to_tuple(features)
 
-def sparse_mx_to_torch_sparse_tensor(sparse_mx):
-    """Convert a scipy sparse matrix to a torch sparse tensor."""
-    sparse_mx = sp.coo_matrix(sparse_mx).astype(np.float32)
-    indices = torch.from_numpy(
-        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
-    values = torch.from_numpy(sparse_mx.data)
-    shape = torch.Size(sparse_mx.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)
-
 def normalize_adj(adj):
     """Symmetrically normalize adjacency matrix."""
     adj = sp.coo_matrix(adj)
@@ -174,7 +162,8 @@ def run(G, config):
     # lab = nx.get_node_attributes(G, "label")
     # labels = np.array(lab.values())
 
-    sp_adj = sparse_mx_to_torch_sparse_tensor(adj)
+    adj = (adj + sp.eye(adj.shape[0])).todense()
+    adj = torch.FloatTensor(adj[np.newaxis])
     features = torch.FloatTensor(features[np.newaxis])
 
     model = DGI(ft_size, config['hidden-channels'], activation='prelu')
@@ -185,46 +174,39 @@ def run(G, config):
         model.train()
         optimiser.zero_grad()
 
-        idx = np.random.permutation(features.shape[0])
+        idx = np.random.permutation(G.number_of_nodes())
         shuf_fts = features[:, idx, :]
 
-        lbl_1 = torch.ones(config['batch-size'], features.shape[0])
-        lbl_2 = torch.zeros(config['batch-size'], features.shape[0])
+        lbl_1 = torch.ones(1, G.number_of_nodes())
+        lbl_2 = torch.zeros(1, G.number_of_nodes())
         lbl = torch.cat((lbl_1, lbl_2), 1)
 
-        print(features.shape)
-        print(shuf_fts.shape)
-        print(sp_adj.shape)
-        print(lbl.shape)
-
-
-        logits = model(features, shuf_fts, sp_adj, True, None, None, None)
-        print(logits.shape)
-        print(lbl.shape)
-
+        logits = model(features, shuf_fts, adj, None, None, None)
         loss = xent(logits, lbl)
 
         print('Loss:', loss)
 
-        if loss < best:
-            best = loss
-            best_t = epoch
-            cnt_wait = 0
-            torch.save(model.state_dict(), 'best_dgi.pkl')
-        else:
-            cnt_wait += 1
-
         loss.backward()
         optimiser.step()
 
-    print('Loading {}th epoch'.format(best_t))
-    model.load_state_dict(torch.load('best_dgi.pkl'))
+    embeds, _ = model.embed(features, adj, None)
+    emb = embeds[0]
 
-    embeds, _ = model.embed(adj, False, None)
+    f = open(config['emb-path'], "w")
+    f.write(str(len(emb))+" ")
+    f.write(str(len(emb[0])) + "\n")
+    for e in emb:
+        e = e.tolist()
+        for i in e:
+            f.write(str(i)+" ")
+        f.write("\n")
+    f.close()
 
-import json
-config_file = open('config.json', "r")
-config = json.load(config_file)
-data_path = "data/" + config["data"] + ".gpickle"
-graph = nx.read_gpickle(data_path)
-run(graph, config)
+    print("Embedding saved to {}.".format(config['emb-path']))
+
+# import json
+# config_file = open('config.json', "r")
+# config = json.load(config_file)
+# data_path = "data/" + config["data"] + ".gpickle"
+# graph = nx.read_gpickle(data_path)
+# run(graph, config)
