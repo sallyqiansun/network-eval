@@ -11,6 +11,7 @@ import networkx as nx
 def run(G, config):
 
     all_results = {}
+    node_features = nx.get_node_attributes(G, "feature")
     node_labels = {}
     node_targets = nx.get_node_attributes(G, "label")
     labels = np.unique(list(node_targets.values()))
@@ -83,9 +84,9 @@ def run(G, config):
 
     return all_results, X, predicted_on_all, true_label_on_all
 
-import json
-config_file = open("config.json", "r")
-config = json.load(config_file)
-data_path = "data/" + config["data"] + ".gpickle"
-graph = nx.read_gpickle(data_path)
-run(graph, config)
+# import json
+# config_file = open("config.json", "r")
+# config = json.load(config_file)
+# data_path = "data/" + config["data"] + ".gpickle"
+# graph = nx.read_gpickle(data_path)
+# run(graph, config)
