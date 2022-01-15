@@ -4,6 +4,8 @@ import numpy as np
 import networkx as nx
 import scipy.sparse as sp
 
+# (reference: https://github.com/PetarV-/DGI)
+
 class AvgReadout(nn.Module):
     def __init__(self):
         super(AvgReadout, self).__init__()

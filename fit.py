@@ -6,6 +6,7 @@ import line
 import matfact
 import sbm
 import graphsage
+import dgi
 
 def model(config, G):
     if config['method'] == "node2vec" or config['method'] == "deepwalk":
@@ -25,6 +26,10 @@ def model(config, G):
 
     elif config["method"] == "graphsage":
         graphsage.run(config, G)
+
+    elif config["method"] == "dgi":
+        dgi.run(config, G)
+
 
     else:
         raise Exception("Method not supported. ")

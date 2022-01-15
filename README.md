@@ -97,7 +97,7 @@ Processing of external datasets is supported by `data_process.py`:
 ### 2. Inductive Methods
 - GraphSAGE (reference: https://github.com/twjiang/graphSAGE-pytorch)
 
-- DGI
+- DGI (reference: https://github.com/PetarV-/DGI)
 
 
 # Tasks & Evaluation Metrics
