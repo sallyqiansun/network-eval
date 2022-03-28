@@ -21,7 +21,7 @@ class Classification(nn.Module):
 
         # self.weight = nn.Parameter(torch.FloatTensor(emb_size, num_classes))
         self.layer = nn.Sequential(
-            nn.Linear(emb_size, num_classes)
+            nn.Linear(int(emb_size), int(num_classes))
             # nn.ReLU()
         )
         self.init_params()
@@ -158,11 +158,11 @@ class SageLayer(nn.Module):
     def __init__(self, input_size, out_size, gcn=False):
         super(SageLayer, self).__init__()
 
-        self.input_size = input_size
-        self.out_size = out_size
-
+        self.input_size = int(input_size)
+        self.out_size = int(out_size)
         self.gcn = gcn
-        self.weight = nn.Parameter(torch.FloatTensor(out_size, self.input_size if self.gcn else 2 * self.input_size))
+
+        self.weight = nn.Parameter(torch.FloatTensor(self.out_size, self.input_size if self.gcn else 2 * self.input_size))
 
         self.init_params()
 
@@ -267,6 +267,8 @@ class GraphSage(nn.Module):
         if len(pre_hidden_embs) == len(unique_nodes):
             embed_matrix = pre_hidden_embs
         else:
+            print(pre_hidden_embs.shape)
+            print(len(unique_nodes_list))
             embed_matrix = pre_hidden_embs[torch.LongTensor(unique_nodes_list)]
         # self.dc.logger.info('3')
         mask = torch.zeros(len(samp_neighs), len(unique_nodes))
@@ -357,15 +359,16 @@ print('DEVICE:', device)
 
 
 
-def run(G, config):
-    random.seed(config['seed'])
-    np.random.seed(config['seed'])
-    torch.manual_seed(config['seed'])
-    torch.cuda.manual_seed_all(config['seed'])
+def run(config, G):
+    random.seed(config["seed"])
+    np.random.seed(config["seed"])
+    torch.manual_seed(config["seed"])
+    torch.cuda.manual_seed_all(config["seed"])
 
     nodes = list(range(0, len(G.nodes())))
     feat = nx.get_node_attributes(G, "feature")
     a = np.array(list(feat.values()))
+    a = a.astype(np.float)
     features = torch.FloatTensor(a).to(device)
     lab = nx.get_node_attributes(G, "label")
     labels = list(lab.values())
@@ -377,11 +380,12 @@ def run(G, config):
         for i in range(len(value)):
             adj[key][i] = new_ind[adj[key][i]]
 
-    graphSage = GraphSage(config['layers'], features.size(1), config['hidden-channels'], features, adj, device, gcn=True, agg_func=config['agg-func'])
+
+    graphSage = GraphSage(config['layers'], features.size(1), config['dimensions'], features, adj, device, gcn=True, agg_func=config['agg-func'])
     graphSage.to(device)
 
     num_labels = len(set(labels))
-    classification = Classification(config['hidden-channels'], num_labels)
+    classification = Classification(config['dimensions'], num_labels)
     classification.to(device)
 
     unsupervised_loss = UnsupervisedLoss(adj, nodes, device, config=config)

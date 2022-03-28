@@ -1,10 +1,7 @@
 import numpy as np
-from collections import defaultdict
-from six import iteritems
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, accuracy_score, zero_one_loss, log_loss
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import MultiLabelBinarizer
 import networkx as nx
 
 def run(G, config):

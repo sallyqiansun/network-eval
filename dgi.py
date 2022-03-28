@@ -154,10 +154,12 @@ def preprocess_adj(adj):
     adj_normalized = normalize_adj(adj + sp.eye(adj.shape[0]))
     return sparse_to_tuple(adj_normalized)
 
-def run(G, config):
+def run(config, G):
     adj = nx.adjacency_matrix(G)
     adj = normalize_adj(adj + sp.eye(adj.shape[0]))
     feat = nx.get_node_attributes(G, "feature")
+    for key in feat:
+        feat[key] = [int(k) for k in feat[key]]
     a = np.array(list(feat.values()))
     features, _ = preprocess_features(sp.csr_matrix(a))
     ft_size = features.shape[1]
@@ -168,7 +170,7 @@ def run(G, config):
     adj = torch.FloatTensor(adj[np.newaxis])
     features = torch.FloatTensor(features[np.newaxis])
 
-    model = DGI(ft_size, config['hidden-channels'], activation='prelu')
+    model = DGI(ft_size, config['dimensions'], activation='prelu')
     optimiser = torch.optim.Adam(model.parameters(), lr=config['learning-rate'])
     xent = nn.CrossEntropyLoss()
 
